@@ -178,6 +178,25 @@ export default function CourseDetail({
             </div>
           )}
 
+          {/* Top review button */}
+          {!showForm && (
+            user ? (
+              <button
+                onClick={() => setShowForm(true)}
+                className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
+              >
+                Write a Review
+              </button>
+            ) : (
+              <Link
+                href="/auth/login"
+                className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
+              >
+                Sign in to Review
+              </Link>
+            )
+          )}
+
           {/* Reviews */}
           <div>
             <h3
@@ -245,22 +264,20 @@ export default function CourseDetail({
             )}
           </div>
 
-          {/* Review form or sign in prompt */}
-          {user ? (
-            showForm ? (
-              <ReviewForm
-                courseId={course.id}
-                instructors={course.instructors}
-                onSubmit={handleNewReview}
-              />
-            ) : (
-              <button
-                onClick={() => setShowForm(true)}
-                className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
-              >
-                Write a Review
-              </button>
-            )
+          {/* Review form or bottom button */}
+          {showForm ? (
+            <ReviewForm
+              courseId={course.id}
+              instructors={course.instructors}
+              onSubmit={handleNewReview}
+            />
+          ) : user ? (
+            <button
+              onClick={() => setShowForm(true)}
+              className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
+            >
+              Write a Review
+            </button>
           ) : (
             <Link
               href="/auth/login"

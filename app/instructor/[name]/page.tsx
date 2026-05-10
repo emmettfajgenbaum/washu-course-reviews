@@ -23,12 +23,24 @@ export default async function InstructorPage({
   const instructorName = decodeURIComponent(name);
   const supabase = await createClient();
 
-  // Get all reviews for this instructor
-  const { data: reviews } = await supabase
+  // Get all reviews for this instructor (exact match or last name match)
+  const { data: exactReviews } = await supabase
     .from("reviews")
     .select("*")
     .eq("instructor", instructorName)
     .order("created_at", { ascending: false });
+
+  // If no exact match, try matching by last name
+  const lastName = instructorName.split(" ").pop() || instructorName;
+  const { data: lastNameReviews } = await supabase
+    .from("reviews")
+    .select("*")
+    .eq("instructor", lastName)
+    .order("created_at", { ascending: false });
+
+  const reviews = (exactReviews && exactReviews.length > 0)
+    ? exactReviews
+    : lastNameReviews;
 
   if (!reviews || reviews.length === 0) notFound();
 

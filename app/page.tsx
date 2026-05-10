@@ -3,7 +3,7 @@ import CourseSearch from "@/components/CourseSearch";
 import UserMenu from "@/components/UserMenu";
 import Link from "next/link";
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ department?: string }> }) {
   const supabase = await createClient();
 
   // Fetch all courses (Supabase defaults to 1000 row limit)
@@ -25,6 +25,8 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const { department: initialDepartment } = await searchParams;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -53,7 +55,7 @@ export default async function Home() {
 
       {/* Main content */}
       <main className="flex-1">
-        <CourseSearch courses={courses || []} />
+        <CourseSearch courses={courses || []} initialDepartment={initialDepartment || ""} />
       </main>
     </div>
   );

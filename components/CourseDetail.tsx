@@ -5,7 +5,7 @@ import type { CourseWithStats, Review } from "@/lib/types";
 import ReviewForm from "./ReviewForm";
 import Link from "next/link";
 
-const REVIEWS_PER_PAGE = 10;
+const REVIEWS_PER_PAGE = 20;
 
 function ratingColor(value: number | null, invert = false) {
   if (value === null) return "text-gray-400";
@@ -83,12 +83,13 @@ export default function CourseDetail({
         </h1>
         <div className="flex flex-wrap gap-1.5 mt-3">
           {course.departments.map((dept) => (
-            <span
+            <Link
               key={dept}
-              className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5]"
+              href={`/?department=${encodeURIComponent(dept)}`}
+              className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5] hover:bg-[#e2ddd5] transition-colors"
             >
               {dept}
-            </span>
+            </Link>
           ))}
         </div>
       </div>
@@ -243,27 +244,29 @@ export default function CourseDetail({
         )}
       </div>
 
-      {/* Review form or bottom button */}
-      {showForm ? (
-        <ReviewForm
-          courseId={course.id}
-          instructors={course.instructors}
-          onSubmit={handleNewReview}
-        />
-      ) : userId ? (
-        <button
-          onClick={() => setShowForm(true)}
-          className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
-        >
-          Write a Review
-        </button>
-      ) : (
-        <Link
-          href="/auth/login"
-          className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
-        >
-          Sign in to Review
-        </Link>
+      {/* Review form or bottom button (only show if 10+ reviews) */}
+      {reviews.length >= 10 && (
+        showForm ? (
+          <ReviewForm
+            courseId={course.id}
+            instructors={course.instructors}
+            onSubmit={handleNewReview}
+          />
+        ) : userId ? (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
+          >
+            Write a Review
+          </button>
+        ) : (
+          <Link
+            href="/auth/login"
+            className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
+          >
+            Sign in to Review
+          </Link>
+        )
       )}
     </div>
   );

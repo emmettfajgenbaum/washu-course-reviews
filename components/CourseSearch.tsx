@@ -8,11 +8,13 @@ const PAGE_SIZE = 30;
 
 export default function CourseSearch({
   courses,
+  initialDepartment = "",
 }: {
   courses: CourseWithStats[];
+  initialDepartment?: string;
 }) {
   const [search, setSearch] = useState("");
-  const [department, setDepartment] = useState("");
+  const [department, setDepartment] = useState(initialDepartment);
   const [reviewFilter, setReviewFilter] = useState<"all" | "has-reviews">(
     "has-reviews"
   );

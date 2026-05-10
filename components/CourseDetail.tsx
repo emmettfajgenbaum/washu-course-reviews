@@ -130,7 +130,7 @@ export default function CourseDetail({
               {stats.count}
             </div>
             <div className="text-xs text-gray-500">
-              {instructor ? "Filtered" : "Reviews"}
+              Reviews
             </div>
           </div>
         </div>

@@ -270,7 +270,7 @@ export default function CourseDetail({
         showForm ? (
           <ReviewForm
             courseId={course.id}
-            instructors={course.instructors}
+            instructors={allInstructors}
             onSubmit={handleNewReview}
           />
         ) : userId ? (

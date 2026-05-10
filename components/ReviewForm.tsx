@@ -47,6 +47,19 @@ export default function ReviewForm({
       return;
     }
 
+    // Normalize instructor name: if user typed a partial/last name that matches
+    // an existing instructor, use the full name instead
+    let finalInstructor = instructor === "__other__" ? customInstructor.trim() : instructor;
+    if (finalInstructor && instructors.length > 0) {
+      const lower = finalInstructor.toLowerCase();
+      const match = instructors.find((i) => {
+        const parts = i.toLowerCase().split(" ");
+        const lastName = parts[parts.length - 1];
+        return lastName === lower || i.toLowerCase() === lower;
+      });
+      if (match) finalInstructor = match;
+    }
+
     const { data, error: insertError } = await supabase
       .from("reviews")
       .insert({
@@ -54,7 +67,7 @@ export default function ReviewForm({
         user_id: user.id,
         quality,
         difficulty,
-        instructor: instructor === "__other__" ? customInstructor : instructor,
+        instructor: finalInstructor,
         hours_per_week: hours,
         comment,
       })

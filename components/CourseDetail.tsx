@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase-browser";
 import type { CourseWithStats, Review } from "@/lib/types";
 import ReviewForm from "./ReviewForm";
@@ -55,6 +55,14 @@ export default function CourseDetail({
     setReviews((prev) => [review, ...prev]);
     setShowForm(false);
   }, []);
+
+  const stats = useMemo(() => {
+    if (reviews.length === 0) return { count: course.review_count, quality: course.avg_quality, difficulty: course.avg_difficulty };
+    const count = reviews.length;
+    const quality = reviews.reduce((s, r) => s + r.quality, 0) / count;
+    const difficulty = reviews.reduce((s, r) => s + r.difficulty, 0) / count;
+    return { count, quality: Math.round(quality * 100) / 100, difficulty: Math.round(difficulty * 100) / 100 };
+  }, [reviews, course.review_count, course.avg_quality, course.avg_difficulty]);
 
   // Close on Escape
   useEffect(() => {
@@ -138,32 +146,32 @@ export default function CourseDetail({
           )}
 
           {/* Aggregate stats */}
-          {course.review_count > 0 && (
+          {stats.count > 0 && (
             <div className="flex gap-6 py-3 px-4 bg-[#f7f5f0] rounded-lg">
               <div className="text-center">
                 <div
                   className={`text-2xl font-bold ${ratingColor(
-                    course.avg_quality
+                    stats.quality
                   )}`}
                 >
-                  {course.avg_quality?.toFixed(1)}
+                  {stats.quality?.toFixed(1)}
                 </div>
                 <div className="text-xs text-gray-500">Quality</div>
               </div>
               <div className="text-center">
                 <div
                   className={`text-2xl font-bold ${ratingColor(
-                    course.avg_difficulty,
+                    stats.difficulty,
                     true
                   )}`}
                 >
-                  {course.avg_difficulty?.toFixed(1)}
+                  {stats.difficulty?.toFixed(1)}
                 </div>
                 <div className="text-xs text-gray-500">Difficulty</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-700">
-                  {course.review_count}
+                  {stats.count}
                 </div>
                 <div className="text-xs text-gray-500">Reviews</div>
               </div>

@@ -62,6 +62,46 @@ const BULLETIN_PAGES = [
   "/undergrad/business/",
   // Art & Architecture
   "/undergrad/art/",
+  // Graduate - Arts & Sciences
+  "/grad/artsci/africanandafricanamericanstudies/",
+  "/grad/artsci/americanculturestudies/",
+  "/grad/artsci/anthropology/",
+  "/grad/artsci/arthistoryandarchaeology/",
+  "/grad/artsci/biology/",
+  "/grad/artsci/chemistry/",
+  "/grad/artsci/classics/",
+  "/grad/artsci/comparativeliteratureandthought/",
+  "/grad/artsci/eastasianlanguagesandcultures/",
+  "/grad/artsci/economics/",
+  "/grad/artsci/education/",
+  "/grad/artsci/eeps/",
+  "/grad/artsci/english/",
+  "/grad/artsci/filmandmediastudies/",
+  "/grad/artsci/history/",
+  "/grad/artsci/jimes/",
+  "/grad/artsci/latinamericanstudies/",
+  "/grad/artsci/mathematics/",
+  "/grad/artsci/music/",
+  "/grad/artsci/performingarts/",
+  "/grad/artsci/philosophy/",
+  "/grad/artsci/philosophyneurosciencepsychology/",
+  "/grad/artsci/physics/",
+  "/grad/artsci/politicalscience/",
+  "/grad/artsci/psychologicalandbrainsciences/",
+  "/grad/artsci/romancelanguagesandliteratures/",
+  "/grad/artsci/sociology/",
+  "/grad/artsci/statisticsanddatascience/",
+  "/grad/artsci/womengenderandsexualitystudies/",
+  // Graduate - Business
+  "/grad/business/",
+  // Graduate - Engineering
+  "/grad/engineering/biomedical/",
+  "/grad/engineering/computerscience/",
+  "/grad/engineering/electrical-and-systems/",
+  "/grad/engineering/energy-environmental-chemical/",
+  "/grad/engineering/mechanical-engineering-materials-science/",
+  // Graduate - Art
+  "/grad/art/",
 ];
 
 const BASE_URL = "https://bulletin.wustl.edu";

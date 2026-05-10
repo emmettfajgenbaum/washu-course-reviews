@@ -105,7 +105,17 @@ export default function CourseDetail({
             Instructors
           </h4>
           <p className="text-sm text-gray-700">
-            {course.instructors.join(", ")}
+            {course.instructors.map((inst, i) => (
+              <span key={inst}>
+                {i > 0 && ", "}
+                <Link
+                  href={`/instructor/${encodeURIComponent(inst)}`}
+                  className="text-[#2d5234] hover:underline"
+                >
+                  {inst}
+                </Link>
+              </span>
+            ))}
           </p>
         </div>
       )}
@@ -212,9 +222,12 @@ export default function CourseDetail({
                     </span>
                   </span>
                   {review.instructor && (
-                    <span className="text-gray-500">
+                    <Link
+                      href={`/instructor/${encodeURIComponent(review.instructor)}`}
+                      className="text-[#2d5234] hover:underline"
+                    >
                       {review.instructor}
-                    </span>
+                    </Link>
                   )}
                 </div>
                 {review.hours_per_week && (

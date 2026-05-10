@@ -1,5 +1,4 @@
-"use client";
-
+import Link from "next/link";
 import { CourseWithStats } from "@/lib/types";
 
 function ratingColor(value: number | null, invert = false) {
@@ -16,15 +15,13 @@ function ratingColor(value: number | null, invert = false) {
 
 export default function CourseCard({
   course,
-  onClick,
 }: {
   course: CourseWithStats;
-  onClick: () => void;
 }) {
   return (
-    <button
-      onClick={onClick}
-      className="w-full text-left bg-white rounded-xl border border-[#e2ddd5] p-5 hover:shadow-md transition-shadow cursor-pointer"
+    <Link
+      href={`/course/${course.id}`}
+      className="block w-full text-left bg-white rounded-xl border border-[#e2ddd5] p-5 hover:shadow-md transition-shadow"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -70,6 +67,6 @@ export default function CourseCard({
           </span>
         </div>
       </div>
-    </button>
+    </Link>
   );
 }

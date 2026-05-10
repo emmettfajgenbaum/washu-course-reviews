@@ -31,12 +31,13 @@ export default async function Home() {
       {/* Header */}
       <header className="bg-[#2d5234] text-white px-4 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <h1
+          <Link
+            href="/"
             className="text-xl font-bold"
             style={{ fontFamily: "'Source Serif 4', serif" }}
           >
             WashU Course Reviews
-          </h1>
+          </Link>
           {user ? (
             <UserMenu email={user.email!} />
           ) : (

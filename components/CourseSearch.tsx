@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import type { CourseWithStats } from "@/lib/types";
 import CourseCard from "./CourseCard";
-import CourseDetail from "./CourseDetail";
 
 const PAGE_SIZE = 30;
 
@@ -21,9 +20,6 @@ export default function CourseSearch({
   const [minQuality, setMinQuality] = useState(1);
   const [maxDifficulty, setMaxDifficulty] = useState(5);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [selectedCourse, setSelectedCourse] = useState<CourseWithStats | null>(
-    null
-  );
 
   const departments = useMemo(() => {
     const set = new Set<string>();
@@ -192,7 +188,6 @@ export default function CourseSearch({
             <CourseCard
               key={course.id}
               course={course}
-              onClick={() => setSelectedCourse(course)}
             />
           ))}
         </div>
@@ -207,13 +202,6 @@ export default function CourseSearch({
         )}
       </div>
 
-      {/* Course detail modal */}
-      {selectedCourse && (
-        <CourseDetail
-          course={selectedCourse}
-          onClose={() => setSelectedCourse(null)}
-        />
-      )}
     </>
   );
 }

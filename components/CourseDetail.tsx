@@ -73,7 +73,7 @@ export default function CourseDetail({
       {/* Course header */}
       <div>
         <p className="text-xs font-medium text-[#2d5234] tracking-wide uppercase">
-          {course.code}
+          {course.bulletin_code || course.code}
         </p>
         <h1
           className="text-2xl font-semibold text-gray-900 mt-1"

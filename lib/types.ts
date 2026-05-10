@@ -5,6 +5,7 @@ export interface Course {
   departments: string[];
   instructors: string[];
   description: string;
+  bulletin_code: string;
   last_offered: string;
   created_at: string;
 }

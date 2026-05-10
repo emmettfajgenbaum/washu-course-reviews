@@ -26,7 +26,7 @@ export default function CourseCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-[#2d5234] tracking-wide uppercase">
-            {course.code}
+            {course.bulletin_code || course.code}
           </p>
           <h3
             className="text-base font-semibold text-gray-900 mt-0.5 leading-snug"

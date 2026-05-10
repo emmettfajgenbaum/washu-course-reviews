@@ -57,6 +57,10 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
       <main className="flex-1">
         <CourseSearch key={initialDepartment || "__all__"} courses={courses || []} initialDepartment={initialDepartment || ""} />
       </main>
+
+      <footer className="text-center text-xs text-gray-400 py-4">
+        Not affiliated with Washington University in St. Louis.
+      </footer>
     </div>
   );
 }

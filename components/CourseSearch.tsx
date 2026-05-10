@@ -85,8 +85,8 @@ export default function CourseSearch({
             placeholder="Search courses, departments, instructors..."
             className="w-full px-4 py-2.5 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30 focus:border-[#2d5234]"
           />
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="flex-1 min-w-[150px]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
+            <div className="col-span-2 sm:col-span-1">
               <label className="block text-xs text-gray-500 mb-1">
                 Department
               </label>
@@ -113,7 +113,7 @@ export default function CourseSearch({
               </select>
             </div>
 
-            <div className="min-w-[130px]">
+            <div>
               <label className="block text-xs text-gray-500 mb-1">
                 Reviews
               </label>
@@ -130,7 +130,7 @@ export default function CourseSearch({
               </select>
             </div>
 
-            <div className="min-w-[130px]">
+            <div>
               <label className="block text-xs text-gray-500 mb-1">
                 Sort By
               </label>
@@ -149,7 +149,7 @@ export default function CourseSearch({
               </select>
             </div>
 
-            <div className="min-w-[140px]">
+            <div>
               <label className="block text-xs text-gray-500 mb-1">
                 Min Quality: {minQuality.toFixed(1)}
               </label>
@@ -167,7 +167,7 @@ export default function CourseSearch({
               />
             </div>
 
-            <div className="min-w-[140px]">
+            <div>
               <label className="block text-xs text-gray-500 mb-1">
                 Max Difficulty: {maxDifficulty.toFixed(1)}
               </label>

@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
 
       {/* Main content */}
       <main className="flex-1">
-        <CourseSearch courses={courses || []} initialDepartment={initialDepartment || ""} />
+        <CourseSearch key={initialDepartment || "__all__"} courses={courses || []} initialDepartment={initialDepartment || ""} />
       </main>
     </div>
   );

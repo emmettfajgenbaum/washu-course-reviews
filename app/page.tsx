@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase-server";
 import CourseSearch from "@/components/CourseSearch";
+import UserMenu from "@/components/UserMenu";
 import Link from "next/link";
 
 export default async function Home() {
@@ -37,7 +38,7 @@ export default async function Home() {
             WashU Course Reviews
           </h1>
           {user ? (
-            <span className="text-sm text-white/70">{user.email}</span>
+            <UserMenu email={user.email!} />
           ) : (
             <Link
               href="/auth/login"

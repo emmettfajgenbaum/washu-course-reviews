@@ -17,6 +17,7 @@ export default function CourseSearch({
   const [reviewFilter, setReviewFilter] = useState<"all" | "has-reviews">(
     "has-reviews"
   );
+  const [sortBy, setSortBy] = useState<"reviews" | "quality" | "difficulty" | "recent">("reviews");
   const [minQuality, setMinQuality] = useState(1);
   const [maxDifficulty, setMaxDifficulty] = useState(5);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -32,8 +33,7 @@ export default function CourseSearch({
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return courses.filter((c) => {
-      // Search filter
+    const result = courses.filter((c) => {
       if (q) {
         const matchesSearch =
           c.code.toLowerCase().includes(q) ||
@@ -42,23 +42,30 @@ export default function CourseSearch({
           c.instructors.some((i) => i.toLowerCase().includes(q));
         if (!matchesSearch) return false;
       }
-
-      // Department filter
       if (department && !c.departments.includes(department)) return false;
-
-      // Review filter
       if (reviewFilter === "has-reviews" && c.review_count === 0) return false;
-
-      // Quality filter
       if (c.avg_quality !== null && c.avg_quality < minQuality) return false;
-
-      // Difficulty filter
       if (c.avg_difficulty !== null && c.avg_difficulty > maxDifficulty)
         return false;
-
       return true;
     });
-  }, [courses, search, department, reviewFilter, minQuality, maxDifficulty]);
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "quality":
+          return (b.avg_quality ?? 0) - (a.avg_quality ?? 0);
+        case "difficulty":
+          return (a.avg_difficulty ?? 5) - (b.avg_difficulty ?? 5);
+        case "recent":
+          return b.created_at.localeCompare(a.created_at);
+        case "reviews":
+        default:
+          return b.review_count - a.review_count;
+      }
+    });
+
+    return result;
+  }, [courses, search, department, reviewFilter, minQuality, maxDifficulty, sortBy]);
 
   const visible = filtered.slice(0, visibleCount);
 
@@ -113,6 +120,25 @@ export default function CourseSearch({
               >
                 <option value="all">All Courses</option>
                 <option value="has-reviews">Has Reviews</option>
+              </select>
+            </div>
+
+            <div className="min-w-[130px]">
+              <label className="block text-xs text-gray-500 mb-1">
+                Sort By
+              </label>
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value as typeof sortBy);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+              >
+                <option value="reviews">Most Reviews</option>
+                <option value="quality">Highest Quality</option>
+                <option value="difficulty">Lowest Difficulty</option>
+                <option value="recent">Most Recent</option>
               </select>
             </div>
 

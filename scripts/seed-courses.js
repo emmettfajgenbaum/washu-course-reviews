@@ -100,7 +100,7 @@ function parseDepartments(raw) {
   const parts = raw.split(",").map((s) => s.trim());
   const set = new Set();
   for (const part of parts) {
-    if (part) set.add(part);
+    if (part) set.add(part.replace(/\(.*?\)$/, "").trim());
   }
   return Array.from(set);
 }

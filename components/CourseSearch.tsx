@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import type { CourseWithStats } from "@/lib/types";
 import CourseCard from "./CourseCard";
 
@@ -13,6 +14,7 @@ export default function CourseSearch({
   courses: CourseWithStats[];
   initialDepartment?: string;
 }) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState(initialDepartment);
   const [reviewFilter, setReviewFilter] = useState<"all" | "has-reviews">(
@@ -90,8 +92,14 @@ export default function CourseSearch({
               <select
                 value={department}
                 onChange={(e) => {
-                  setDepartment(e.target.value);
+                  const val = e.target.value;
+                  setDepartment(val);
                   setVisibleCount(PAGE_SIZE);
+                  if (val) {
+                    router.push(`/?department=${encodeURIComponent(val)}`, { scroll: false });
+                  } else {
+                    router.push("/", { scroll: false });
+                  }
                 }}
                 className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >

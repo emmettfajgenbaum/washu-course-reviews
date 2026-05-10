@@ -83,13 +83,12 @@ export default function CourseDetail({
         </h1>
         <div className="flex flex-wrap gap-1.5 mt-3">
           {course.departments.map((dept) => (
-            <Link
+            <span
               key={dept}
-              href={`/?department=${encodeURIComponent(dept)}`}
-              className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5] hover:bg-[#e2ddd5] transition-colors"
+              className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5]"
             >
               {dept}
-            </Link>
+            </span>
           ))}
         </div>
       </div>

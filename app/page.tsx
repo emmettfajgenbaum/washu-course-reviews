@@ -20,7 +20,29 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
     if (data.length < 1000) break;
     offset += 1000;
   }
-  const courses = allCourses;
+
+  // Fetch distinct instructors from reviews and merge into courses
+  const { data: reviewInstructors } = await supabase
+    .from("reviews")
+    .select("course_id, instructor")
+    .neq("instructor", "");
+
+  const reviewInstructorMap = new Map<number, Set<string>>();
+  if (reviewInstructors) {
+    for (const r of reviewInstructors) {
+      if (!reviewInstructorMap.has(r.course_id)) {
+        reviewInstructorMap.set(r.course_id, new Set());
+      }
+      reviewInstructorMap.get(r.course_id)!.add(r.instructor);
+    }
+  }
+
+  const courses = allCourses.map((c) => {
+    const reviewInsts = reviewInstructorMap.get(c.id);
+    if (!reviewInsts) return c;
+    const merged = new Set([...c.instructors, ...reviewInsts]);
+    return { ...c, instructors: Array.from(merged) };
+  });
 
   const {
     data: { user },

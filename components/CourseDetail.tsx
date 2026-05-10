@@ -38,7 +38,7 @@ export default function CourseDetail({
     setShowForm(false);
   }, []);
 
-  // Collect all unique instructors from reviews
+  // Collect all unique instructors from reviews and course data
   const reviewInstructors = useMemo(() => {
     const set = new Set<string>();
     reviews.forEach((r) => {
@@ -46,6 +46,15 @@ export default function CourseDetail({
     });
     return Array.from(set).sort();
   }, [reviews]);
+
+  const allInstructors = useMemo(() => {
+    const set = new Set<string>();
+    course.instructors.forEach((i) => set.add(i));
+    reviews.forEach((r) => {
+      if (r.instructor) set.add(r.instructor);
+    });
+    return Array.from(set).sort();
+  }, [course.instructors, reviews]);
 
   // Filter reviews by selected instructor
   const filteredReviews = useMemo(() => {
@@ -99,13 +108,13 @@ export default function CourseDetail({
         </p>
       )}
 
-      {course.instructors.length > 0 && (
+      {allInstructors.length > 0 && (
         <div>
           <h4 className="text-sm font-medium text-gray-500 mb-1">
             Instructors
           </h4>
           <p className="text-sm text-gray-700">
-            {course.instructors.map((inst, i) => (
+            {allInstructors.map((inst, i) => (
               <span key={inst}>
                 {i > 0 && ", "}
                 <Link

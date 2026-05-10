@@ -110,6 +110,7 @@ const BASE_URL = "https://bulletin.wustl.edu";
 function normalize(name) {
   return name
     .toLowerCase()
+    .replace(/&/g, "and")
     .replace(/[^a-z0-9\s]/g, "")
     .replace(/\s+/g, " ")
     .trim();

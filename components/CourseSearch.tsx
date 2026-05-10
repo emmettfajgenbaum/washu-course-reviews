@@ -37,6 +37,7 @@ export default function CourseSearch({
       if (q) {
         const matchesSearch =
           c.code.toLowerCase().includes(q) ||
+          (c.bulletin_code && c.bulletin_code.toLowerCase().includes(q)) ||
           c.name.toLowerCase().includes(q) ||
           c.departments.some((d) => d.toLowerCase().includes(q)) ||
           c.instructors.some((i) => i.toLowerCase().includes(q));

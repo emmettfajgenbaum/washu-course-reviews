@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import CourseDetail from "@/components/CourseDetail";
 import UserMenu from "@/components/UserMenu";
@@ -26,9 +27,8 @@ export default async function CoursePage({
     .eq("course_id", course.id)
     .order("created_at", { ascending: false });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await currentUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -41,8 +41,8 @@ export default async function CoursePage({
           >
             WashU Course Reviews
           </Link>
-          {user ? (
-            <UserMenu email={user.email!} />
+          {userEmail ? (
+            <UserMenu email={userEmail} />
           ) : (
             <Link
               href="/auth/login"
@@ -64,7 +64,7 @@ export default async function CoursePage({
         <CourseDetail
           course={course}
           initialReviews={reviews || []}
-          userId={user?.id || null}
+          userId={user?.id ?? null}
         />
       </main>
 

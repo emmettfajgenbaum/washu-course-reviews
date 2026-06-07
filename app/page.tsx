@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { currentUser } from "@clerk/nextjs/server";
 import CourseSearch from "@/components/CourseSearch";
 import UserMenu from "@/components/UserMenu";
 import Link from "next/link";
@@ -44,9 +45,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
     return { ...c, instructors: Array.from(merged) };
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await currentUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 
   const { department: initialDepartment } = await searchParams;
 
@@ -62,8 +62,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
           >
             WashU Course Reviews
           </Link>
-          {user ? (
-            <UserMenu email={user.email!} />
+          {userEmail ? (
+            <UserMenu email={userEmail} />
           ) : (
             <Link
               href="/auth/login"

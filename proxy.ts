@@ -1,38 +1,37 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { clerkMiddleware, clerkClient } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+// Allowed sign-in domains. Enforced in two places (defense in depth):
+//   1. Here — signed-in users with a wrong-domain email are redirected to
+//      /auth/domain-error before any page renders.
+//   2. app/actions/reviews.ts (submitReview) — server-side write rejection.
+// Keep both lists in sync.
+const ALLOWED_DOMAINS = ["wustl.edu", "washu.edu"];
+const DOMAIN_ERROR_PATH = "/auth/domain-error";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+export const proxy = clerkMiddleware(async (auth, req) => {
+  const { userId } = await auth();
+  if (!userId) return;
 
-  // Refresh the session
-  await supabase.auth.getUser();
+  // Avoid a redirect loop on the error page itself.
+  if (req.nextUrl.pathname.startsWith(DOMAIN_ERROR_PATH)) return;
 
-  return supabaseResponse;
-}
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const email = user.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
+  const domain = email.split("@")[1] ?? "";
+
+  if (!ALLOWED_DOMAINS.includes(domain)) {
+    const url = req.nextUrl.clone();
+    url.pathname = DOMAIN_ERROR_PATH;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+});
 
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/(api|trpc)(.*)",
   ],
 };

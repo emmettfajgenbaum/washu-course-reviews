@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import { submitReview } from "@/app/actions/reviews";
 import type { Review } from "@/lib/types";
 
 export default function ReviewForm({
@@ -36,16 +36,6 @@ export default function ReviewForm({
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("You must be signed in to submit a review.");
-      setLoading(false);
-      return;
-    }
 
     // Normalize instructor name: if user typed a partial/last name that matches
     // an existing instructor, use the full name instead
@@ -60,32 +50,23 @@ export default function ReviewForm({
       if (match) finalInstructor = match;
     }
 
-    const { data, error: insertError } = await supabase
-      .from("reviews")
-      .insert({
-        course_id: courseId,
-        user_id: user.id,
-        quality,
-        difficulty,
-        instructor: finalInstructor,
-        hours_per_week: hours,
-        comment,
-      })
-      .select()
-      .single();
+    const result = await submitReview({
+      courseId,
+      quality,
+      difficulty,
+      instructor: finalInstructor,
+      hours_per_week: hours,
+      comment,
+    });
 
     setLoading(false);
 
-    if (insertError) {
-      if (insertError.code === "23505") {
-        setError("You have already reviewed this course.");
-      } else {
-        setError(insertError.message);
-      }
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
-    onSubmit(data as Review);
+    onSubmit(result.review);
     setQuality(null);
     setDifficulty(null);
     setInstructor("");

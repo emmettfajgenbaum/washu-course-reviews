@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase-server";
+import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import UserMenu from "@/components/UserMenu";
 import Link from "next/link";
@@ -57,9 +58,8 @@ export default async function InstructorPage({
   const avgQuality = reviews.reduce((s, r) => s + r.quality, 0) / reviews.length;
   const avgDifficulty = reviews.reduce((s, r) => s + r.difficulty, 0) / reviews.length;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await currentUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -72,8 +72,8 @@ export default async function InstructorPage({
           >
             WashU Course Reviews
           </Link>
-          {user ? (
-            <UserMenu email={user.email!} />
+          {userEmail ? (
+            <UserMenu email={userEmail} />
           ) : (
             <Link
               href="/auth/login"

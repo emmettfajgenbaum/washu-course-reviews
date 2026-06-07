@@ -3,11 +3,23 @@
 :root {
   --background: #f7f5f0;
   --foreground: #1a1a1a;
+
+  /* Brand palette */
+  --primary: #2d5234; /* green — top bar, buttons, links, accents */
+  --primary-hover: #234228; /* darker green for hover states */
+  --cream: #f7f5f0; /* page / surface background */
+  --border: #e2ddd5; /* warm border + dividers */
+  --slate: #1e293b; /* dark slate — headings / primary text */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-cream: var(--cream);
+  --color-border: var(--border);
+  --color-slate: var(--slate);
 }
 
 body {

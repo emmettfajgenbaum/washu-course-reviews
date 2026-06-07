@@ -7,10 +7,10 @@ export default function UserMenu({ email }: { email: string }) {
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-white/70">{email}</span>
+      <span className="hidden text-sm text-slate/60 sm:inline">{email}</span>
       <button
         onClick={() => signOut({ redirectUrl: "/" })}
-        className="text-sm bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-lg transition-colors"
+        className="shrink-0 rounded-lg border border-border bg-white px-3 py-1.5 text-sm text-slate transition-colors hover:bg-border"
       >
         Sign Out
       </button>

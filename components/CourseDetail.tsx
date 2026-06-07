@@ -190,7 +190,7 @@ export default function CourseDetail({
                 setInstructor(e.target.value);
                 setVisibleCount(REVIEWS_PER_PAGE);
               }}
-              className="px-3 py-1.5 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+              className="px-3 py-1.5 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
             >
               <option value="">All Instructors</option>
               {reviewInstructors.map((i) => (

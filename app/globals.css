@@ -15,3 +15,33 @@ body {
   color: var(--foreground);
   font-family: "DM Sans", sans-serif;
 }
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  summary,
+  label[for],
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input[type="range"]:not(:disabled) {
+    cursor: grab;
+  }
+  input[type="range"]:not(:disabled):active {
+    cursor: grabbing;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    cursor: grab;
+  }
+  input[type="range"]:active::-webkit-slider-thumb {
+    cursor: grabbing;
+  }
+  input[type="range"]::-moz-range-thumb {
+    cursor: grab;
+  }
+  input[type="range"]:active::-moz-range-thumb {
+    cursor: grabbing;
+  }
+}

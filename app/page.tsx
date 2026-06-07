@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
 import CourseSearch from "@/components/CourseSearch";
 import UserMenu from "@/components/UserMenu";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ department?: string }> }) {
@@ -53,11 +54,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
-      <header className="bg-[#2d5234] text-white px-4 py-4">
+      <header className="bg-[#2d5234] text-white px-4 py-5">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link
             href="/"
-            className="text-xl font-bold"
+            className="text-2xl font-bold"
             style={{ fontFamily: "'Source Serif 4', serif" }}
           >
             WashU Course Reviews
@@ -80,9 +81,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
         <CourseSearch key={initialDepartment || "__all__"} courses={courses || []} initialDepartment={initialDepartment || ""} />
       </main>
 
-      <footer className="text-center text-xs text-gray-400 py-4">
-        Not affiliated with Washington University in St. Louis.
-      </footer>
+      <Footer />
     </div>
   );
 }

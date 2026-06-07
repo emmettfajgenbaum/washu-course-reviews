@@ -134,7 +134,7 @@ export default function ReviewForm({
                     setInstructor(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="">Select instructor...</option>
                 {instructors.map((i) => (

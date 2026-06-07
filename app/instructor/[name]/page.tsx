@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import UserMenu from "@/components/UserMenu";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 
 function ratingColor(value: number, invert = false) {
@@ -63,11 +64,11 @@ export default async function InstructorPage({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-[#2d5234] text-white px-4 py-4">
+      <header className="bg-[#2d5234] text-white px-4 py-5">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Link
             href="/"
-            className="text-xl font-bold hover:text-white/90 transition-colors"
+            className="text-2xl font-bold hover:text-white/90 transition-colors"
             style={{ fontFamily: "'Source Serif 4', serif" }}
           >
             WashU Course Reviews
@@ -223,9 +224,7 @@ export default async function InstructorPage({
         </div>
       </main>
 
-      <footer className="text-center text-xs text-gray-400 py-4">
-        Not affiliated with Washington University in St. Louis.
-      </footer>
+      <Footer />
     </div>
   );
 }

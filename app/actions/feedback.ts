@@ -1,6 +1,5 @@
 "use server";
 
-import { currentUser } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 
 export type SubmitFeedbackInput = {
@@ -21,13 +20,12 @@ export async function submitFeedback(input: SubmitFeedbackInput): Promise<Submit
     return { ok: false, error: "Feedback must be 5000 characters or less." };
   }
 
-  const user = await currentUser();
-  const userEmail = user?.primaryEmailAddress?.emailAddress ?? "";
-  const email = (input.email ?? "").trim() || userEmail;
+  // Only store the email the user explicitly typed. Do NOT fall back to the
+  // signed-in account's email — users must be able to submit anonymously.
+  const email = (input.email ?? "").trim();
 
   const supabase = createAdminClient();
   const { error } = await supabase.from("feedback").insert({
-    user_id: user?.id ?? null,
     email,
     message,
   });

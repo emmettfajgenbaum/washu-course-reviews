@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
 import CourseSearch from "@/components/CourseSearch";
-import UserMenu from "@/components/UserMenu";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import Link from "next/link";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ department?: string }> }) {
   const supabase = await createClient();
@@ -53,28 +52,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="bg-[#2d5234] text-white px-4 py-5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-2xl font-bold"
-            style={{ fontFamily: "'Source Serif 4', serif" }}
-          >
-            WashU Course Reviews
-          </Link>
-          {userEmail ? (
-            <UserMenu email={userEmail} />
-          ) : (
-            <Link
-              href="/auth/login"
-              className="text-sm bg-white/15 hover:bg-white/25 px-4 py-1.5 rounded-lg transition-colors"
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
-      </header>
+      <Header userEmail={userEmail} />
 
       {/* Main content */}
       <main className="flex-1">

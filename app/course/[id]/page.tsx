@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import CourseDetail from "@/components/CourseDetail";
-import UserMenu from "@/components/UserMenu";
+import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 
@@ -33,27 +33,7 @@ export default async function CoursePage({
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-[#2d5234] text-white px-4 py-5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-2xl font-bold hover:text-white/90 transition-colors"
-            style={{ fontFamily: "'Source Serif 4', serif" }}
-          >
-            WashU Course Reviews
-          </Link>
-          {userEmail ? (
-            <UserMenu email={userEmail} />
-          ) : (
-            <Link
-              href="/auth/login"
-              className="text-sm bg-white/15 hover:bg-white/25 px-4 py-1.5 rounded-lg transition-colors"
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
-      </header>
+      <Header userEmail={userEmail} />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         <Link

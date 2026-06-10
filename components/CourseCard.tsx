@@ -35,7 +35,7 @@ export default function CourseCard({
             {course.name}
           </h3>
           <div className="flex flex-wrap gap-1.5 mt-2">
-            {course.departments.map((dept) => (
+            {[...new Set(course.departments)].map((dept) => (
               <span
                 key={dept}
                 className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5]"

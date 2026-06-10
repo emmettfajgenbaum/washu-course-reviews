@@ -14,14 +14,16 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className="h-full antialiased">
+      <html lang="en" className="h-full antialiased" suppressHydrationWarning>
         <head>
           <link
             href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap"
             rel="stylesheet"
           />
         </head>
-        <body className="min-h-full flex flex-col">{children}</body>
+        <body className="min-h-full flex flex-col" suppressHydrationWarning>
+          {children}
+        </body>
       </html>
     </ClerkProvider>
   );

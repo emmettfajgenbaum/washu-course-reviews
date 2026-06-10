@@ -1,12 +1,7 @@
 import { clerkMiddleware, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { isAllowedEmail } from "@/lib/auth-domains";
 
-// Allowed sign-in domains. Enforced in two places (defense in depth):
-//   1. Here — signed-in users with a wrong-domain email are redirected to
-//      /auth/domain-error before any page renders.
-//   2. app/actions/reviews.ts (submitReview) — server-side write rejection.
-// Keep both lists in sync.
-const ALLOWED_DOMAINS = ["wustl.edu", "washu.edu"];
 const DOMAIN_ERROR_PATH = "/auth/domain-error";
 
 export const proxy = clerkMiddleware(async (auth, req) => {
@@ -18,10 +13,9 @@ export const proxy = clerkMiddleware(async (auth, req) => {
 
   const client = await clerkClient();
   const user = await client.users.getUser(userId);
-  const email = user.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
-  const domain = email.split("@")[1] ?? "";
+  const email = user.primaryEmailAddress?.emailAddress ?? "";
 
-  if (!ALLOWED_DOMAINS.includes(domain)) {
+  if (!isAllowedEmail(email)) {
     const url = req.nextUrl.clone();
     url.pathname = DOMAIN_ERROR_PATH;
     url.search = "";

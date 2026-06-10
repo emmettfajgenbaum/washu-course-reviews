@@ -2,14 +2,8 @@
 
 import { currentUser } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { isAllowedEmail } from "@/lib/auth-domains";
 import type { Review } from "@/lib/types";
-
-// Allowed sign-in domains. Enforced in two places (defense in depth):
-//   1. proxy.ts — redirects wrong-domain users away from every page.
-//   2. Here — server-side write rejection if a wrong-domain user reaches
-//      this action anyway (e.g. via a direct fetch).
-// Keep both lists in sync.
-const ALLOWED_DOMAINS = ["wustl.edu", "washu.edu"];
 
 export type SubmitReviewInput = {
   courseId: number;
@@ -28,9 +22,8 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
   const user = await currentUser();
   if (!user) return { ok: false, error: "You must be signed in to submit a review." };
 
-  const email = user.primaryEmailAddress?.emailAddress?.toLowerCase() ?? "";
-  const domain = email.split("@")[1] ?? "";
-  if (!ALLOWED_DOMAINS.includes(domain)) {
+  const email = user.primaryEmailAddress?.emailAddress ?? "";
+  if (!isAllowedEmail(email)) {
     return { ok: false, error: "Reviews are restricted to @wustl.edu and @washu.edu accounts." };
   }
 

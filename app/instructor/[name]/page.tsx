@@ -69,9 +69,15 @@ export default async function InstructorPage({
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         <Link
           href="/"
-          className="text-sm text-[#2d5234] hover:underline mb-4 inline-block"
+          className="group inline-flex items-center gap-2 mb-5 text-base font-medium text-[#2d5234] hover:text-[#234228] transition-colors"
         >
-          &larr; Back to courses
+          <span
+            aria-hidden="true"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2d5234] text-white text-sm transition-transform group-hover:-translate-x-0.5"
+          >
+            &larr;
+          </span>
+          Back to courses
         </Link>
 
         <div className="space-y-6">

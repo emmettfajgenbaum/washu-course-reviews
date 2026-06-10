@@ -161,7 +161,7 @@ export default async function InstructorPage({
                 return (
                   <div
                     key={review.id}
-                    className="border border-[#e2ddd5] rounded-lg p-4"
+                    className="bg-white border border-[#e2ddd5] rounded-lg p-4"
                   >
                     <div className="flex items-center gap-4 text-sm mb-2">
                       <span>

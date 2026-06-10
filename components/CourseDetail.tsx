@@ -157,23 +157,28 @@ export default function CourseDetail({
           </div>
         )}
 
-        {/* Top review button */}
-        {!showForm && (
-          userId ? (
-            <button
-              onClick={() => setShowForm(true)}
-              className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
-            >
-              Write a Review
-            </button>
-          ) : (
-            <Link
-              href="/auth/login"
-              className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
-            >
-              Sign in to Review
-            </Link>
-          )
+        {/* Top review button / inline form */}
+        {showForm ? (
+          <ReviewForm
+            courseId={course.id}
+            instructors={allInstructors}
+            onSubmit={handleNewReview}
+            onCancel={() => setShowForm(false)}
+          />
+        ) : userId ? (
+          <button
+            onClick={() => setShowForm(true)}
+            className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
+          >
+            Write a Review
+          </button>
+        ) : (
+          <Link
+            href="/auth/login"
+            className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
+          >
+            Sign in to Review
+          </Link>
         )}
       </div>
 
@@ -268,30 +273,6 @@ export default function CourseDetail({
         )}
       </div>
 
-      {/* Review form or bottom button (only show if 10+ reviews) */}
-      {reviews.length >= 10 && (
-        showForm ? (
-          <ReviewForm
-            courseId={course.id}
-            instructors={allInstructors}
-            onSubmit={handleNewReview}
-          />
-        ) : userId ? (
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
-          >
-            Write a Review
-          </button>
-        ) : (
-          <Link
-            href="/auth/login"
-            className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
-          >
-            Sign in to Review
-          </Link>
-        )
-      )}
     </div>
   );
 }

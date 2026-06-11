@@ -1,38 +1,31 @@
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { clerkMiddleware, clerkClient } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { isAllowedEmail } from "@/lib/auth-domains";
 
-export async function proxy(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({ request });
+const DOMAIN_ERROR_PATH = "/auth/domain-error";
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
+export const proxy = clerkMiddleware(async (auth, req) => {
+  const { userId } = await auth();
+  if (!userId) return;
 
-  // Refresh the session
-  await supabase.auth.getUser();
+  // Avoid a redirect loop on the error page itself.
+  if (req.nextUrl.pathname.startsWith(DOMAIN_ERROR_PATH)) return;
 
-  return supabaseResponse;
-}
+  const client = await clerkClient();
+  const user = await client.users.getUser(userId);
+  const email = user.primaryEmailAddress?.emailAddress ?? "";
+
+  if (!isAllowedEmail(email)) {
+    const url = req.nextUrl.clone();
+    url.pathname = DOMAIN_ERROR_PATH;
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
+});
 
 export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/(api|trpc)(.*)",
   ],
 };

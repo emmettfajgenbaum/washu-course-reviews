@@ -102,7 +102,7 @@ export default function CourseSearch({
                     router.push("/", { scroll: false });
                   }
                 }}
-                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="">All Departments</option>
                 {departments.map((d) => (
@@ -123,7 +123,7 @@ export default function CourseSearch({
                   setReviewFilter(e.target.value as "all" | "has-reviews");
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="all">All Courses</option>
                 <option value="has-reviews">Has Reviews</option>
@@ -140,7 +140,7 @@ export default function CourseSearch({
                   setSortBy(e.target.value as typeof sortBy);
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="reviews">Most Reviews</option>
                 <option value="quality">Highest Quality</option>
@@ -163,7 +163,7 @@ export default function CourseSearch({
                   setMinQuality(parseFloat(e.target.value));
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full accent-[#2d5234]"
+                className="w-full accent-[#2d5234] cursor-grab active:cursor-grabbing"
               />
             </div>
 
@@ -181,7 +181,7 @@ export default function CourseSearch({
                   setMaxDifficulty(parseFloat(e.target.value));
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full accent-[#2d5234]"
+                className="w-full accent-[#2d5234] cursor-grab active:cursor-grabbing"
               />
             </div>
           </div>

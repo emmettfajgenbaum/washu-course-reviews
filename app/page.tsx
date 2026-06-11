@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase-server";
+import { currentUser } from "@clerk/nextjs/server";
 import CourseSearch from "@/components/CourseSearch";
-import UserMenu from "@/components/UserMenu";
-import Link from "next/link";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ department?: string }> }) {
   const supabase = await createClient();
@@ -44,45 +45,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ d
     return { ...c, instructors: Array.from(merged) };
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await currentUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 
   const { department: initialDepartment } = await searchParams;
 
   return (
     <div className="flex flex-col min-h-screen">
-      {/* Header */}
-      <header className="bg-[#2d5234] text-white px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-xl font-bold"
-            style={{ fontFamily: "'Source Serif 4', serif" }}
-          >
-            WashU Course Reviews
-          </Link>
-          {user ? (
-            <UserMenu email={user.email!} />
-          ) : (
-            <Link
-              href="/auth/login"
-              className="text-sm bg-white/15 hover:bg-white/25 px-4 py-1.5 rounded-lg transition-colors"
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
-      </header>
+      <Header userEmail={userEmail} />
 
       {/* Main content */}
       <main className="flex-1">
         <CourseSearch key={initialDepartment || "__all__"} courses={courses || []} initialDepartment={initialDepartment || ""} />
       </main>
 
-      <footer className="text-center text-xs text-gray-400 py-4">
-        Not affiliated with Washington University in St. Louis.
-      </footer>
+      <Footer />
     </div>
   );
 }

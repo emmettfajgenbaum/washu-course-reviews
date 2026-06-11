@@ -1,17 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase-browser";
+import { submitReview } from "@/app/actions/reviews";
 import type { Review } from "@/lib/types";
 
 export default function ReviewForm({
   courseId,
   instructors,
   onSubmit,
+  onCancel,
 }: {
   courseId: number;
   instructors: string[];
   onSubmit: (review: Review) => void;
+  onCancel?: () => void;
 }) {
   const [quality, setQuality] = useState<number | null>(null);
   const [difficulty, setDifficulty] = useState<number | null>(null);
@@ -36,16 +38,6 @@ export default function ReviewForm({
     }
 
     setLoading(true);
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("You must be signed in to submit a review.");
-      setLoading(false);
-      return;
-    }
 
     // Normalize instructor name: if user typed a partial/last name that matches
     // an existing instructor, use the full name instead
@@ -60,32 +52,23 @@ export default function ReviewForm({
       if (match) finalInstructor = match;
     }
 
-    const { data, error: insertError } = await supabase
-      .from("reviews")
-      .insert({
-        course_id: courseId,
-        user_id: user.id,
-        quality,
-        difficulty,
-        instructor: finalInstructor,
-        hours_per_week: hours,
-        comment,
-      })
-      .select()
-      .single();
+    const result = await submitReview({
+      courseId,
+      quality,
+      difficulty,
+      instructor: finalInstructor,
+      hours_per_week: hours,
+      comment,
+    });
 
     setLoading(false);
 
-    if (insertError) {
-      if (insertError.code === "23505") {
-        setError("You have already reviewed this course.");
-      } else {
-        setError(insertError.message);
-      }
+    if (!result.ok) {
+      setError(result.error);
       return;
     }
 
-    onSubmit(data as Review);
+    onSubmit(result.review);
     setQuality(null);
     setDifficulty(null);
     setInstructor("");
@@ -113,7 +96,7 @@ export default function ReviewForm({
     ));
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-[#e2ddd5] pt-5 mt-5">
+    <form onSubmit={handleSubmit} className="border-t border-[#e2ddd5] pt-5">
       <h4
         className="text-lg font-semibold mb-4"
         style={{ fontFamily: "'Source Serif 4', serif" }}
@@ -153,7 +136,7 @@ export default function ReviewForm({
                     setInstructor(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="">Select instructor...</option>
                 {instructors.map((i) => (
@@ -208,20 +191,28 @@ export default function ReviewForm({
             rows={4}
             className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30 resize-y"
           />
-          <p className="text-xs text-gray-400 mt-1">
-            {comment.length} / 10 characters minimum
-          </p>
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors disabled:opacity-50"
-        >
-          {loading ? "Submitting..." : "Submit Review"}
-        </button>
+        <div className="flex gap-2">
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 py-2.5 bg-white border border-[#e2ddd5] text-gray-700 rounded-lg text-sm font-medium hover:bg-[#f7f5f0] transition-colors"
+            >
+              Cancel
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={loading}
+            className="flex-1 py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors disabled:opacity-50"
+          >
+            {loading ? "Submitting..." : "Submit Review"}
+          </button>
+        </div>
       </div>
     </form>
   );

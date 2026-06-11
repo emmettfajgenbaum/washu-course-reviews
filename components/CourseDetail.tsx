@@ -79,85 +79,93 @@ export default function CourseDetail({
 
   return (
     <div className="space-y-6">
-      {/* Course header */}
-      <div>
-        <p className="text-xs font-medium text-[#2d5234] tracking-wide uppercase">
-          {course.bulletin_code || course.code.replace(/[A-Z]\d+\s+/g, "")}
-        </p>
-        <h1
-          className="text-2xl font-semibold text-gray-900 mt-1"
-          style={{ fontFamily: "'Source Serif 4', serif" }}
-        >
-          {course.name}
-        </h1>
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {course.departments.map((dept) => (
-            <span
-              key={dept}
-              className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5]"
-            >
-              {dept}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {course.description && (
-        <p className="text-sm text-gray-700 leading-relaxed">
-          {course.description}
-        </p>
-      )}
-
-      {allInstructors.length > 0 && (
+      {/* Course info card */}
+      <div className="bg-white rounded-xl border border-[#e2ddd5] p-5 sm:p-6 space-y-5">
+        {/* Course header */}
         <div>
-          <h4 className="text-sm font-medium text-gray-500 mb-1">
-            Instructors
-          </h4>
-          <p className="text-sm text-gray-700">
-            {allInstructors.map((inst, i) => (
-              <span key={inst}>
-                {i > 0 && ", "}
-                <Link
-                  href={`/instructor/${encodeURIComponent(inst)}`}
-                  className="text-[#2d5234] hover:underline"
-                >
-                  {inst}
-                </Link>
+          <p className="text-xs font-medium text-[#2d5234] tracking-wide uppercase">
+            {course.bulletin_code || course.code.replace(/[A-Z]\d+\s+/g, "")}
+          </p>
+          <h1
+            className="text-2xl font-semibold text-gray-900 mt-1"
+            style={{ fontFamily: "'Source Serif 4', serif" }}
+          >
+            {course.name}
+          </h1>
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {[...new Set(course.departments)].map((dept) => (
+              <span
+                key={dept}
+                className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5]"
+              >
+                {dept}
               </span>
             ))}
+          </div>
+        </div>
+
+        {course.description && (
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {course.description}
           </p>
-        </div>
-      )}
+        )}
 
-      {/* Aggregate stats */}
-      {stats.count > 0 && (
-        <div className="flex gap-6 py-3 px-4 bg-[#f7f5f0] rounded-lg">
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${ratingColor(stats.quality)}`}>
-              {stats.quality?.toFixed(1)}
-            </div>
-            <div className="text-xs text-gray-500">Quality</div>
+        {allInstructors.length > 0 && (
+          <div>
+            <h4 className="text-sm font-medium text-gray-500 mb-1">
+              Instructors
+            </h4>
+            <p className="text-sm text-gray-700">
+              {allInstructors.map((inst, i) => (
+                <span key={inst}>
+                  {i > 0 && ", "}
+                  <Link
+                    href={`/instructor/${encodeURIComponent(inst)}`}
+                    className="text-[#2d5234] hover:underline"
+                  >
+                    {inst}
+                  </Link>
+                </span>
+              ))}
+            </p>
           </div>
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${ratingColor(stats.difficulty, true)}`}>
-              {stats.difficulty?.toFixed(1)}
-            </div>
-            <div className="text-xs text-gray-500">Difficulty</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-700">
-              {stats.count}
-            </div>
-            <div className="text-xs text-gray-500">
-              Reviews
-            </div>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Top review button */}
-      {!showForm && (
-        userId ? (
+        {/* Aggregate stats */}
+        {stats.count > 0 && (
+          <div className="flex gap-6 py-3 px-4">
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${ratingColor(stats.quality)}`}>
+                {stats.quality?.toFixed(1)}
+              </div>
+              <div className="text-xs text-gray-500">Quality</div>
+            </div>
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${ratingColor(stats.difficulty, true)}`}>
+                {stats.difficulty?.toFixed(1)}
+              </div>
+              <div className="text-xs text-gray-500">Difficulty</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-gray-700">
+                {stats.count}
+              </div>
+              <div className="text-xs text-gray-500">
+                Reviews
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Top review button / inline form */}
+        {showForm ? (
+          <ReviewForm
+            courseId={course.id}
+            instructors={allInstructors}
+            onSubmit={handleNewReview}
+            onCancel={() => setShowForm(false)}
+          />
+        ) : userId ? (
           <button
             onClick={() => setShowForm(true)}
             className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
@@ -171,8 +179,8 @@ export default function CourseDetail({
           >
             Sign in to Review
           </Link>
-        )
-      )}
+        )}
+      </div>
 
       {/* Reviews section */}
       <div>
@@ -190,7 +198,7 @@ export default function CourseDetail({
                 setInstructor(e.target.value);
                 setVisibleCount(REVIEWS_PER_PAGE);
               }}
-              className="px-3 py-1.5 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+              className="px-3 py-1.5 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
             >
               <option value="">All Instructors</option>
               {reviewInstructors.map((i) => (
@@ -215,7 +223,7 @@ export default function CourseDetail({
             {visible.map((review) => (
               <div
                 key={review.id}
-                className="border border-[#e2ddd5] rounded-lg p-4"
+                className="bg-white border border-[#e2ddd5] rounded-lg p-4"
               >
                 <div className="flex items-center gap-4 text-sm mb-2">
                   <span>
@@ -265,30 +273,6 @@ export default function CourseDetail({
         )}
       </div>
 
-      {/* Review form or bottom button (only show if 10+ reviews) */}
-      {reviews.length >= 10 && (
-        showForm ? (
-          <ReviewForm
-            courseId={course.id}
-            instructors={allInstructors}
-            onSubmit={handleNewReview}
-          />
-        ) : userId ? (
-          <button
-            onClick={() => setShowForm(true)}
-            className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
-          >
-            Write a Review
-          </button>
-        ) : (
-          <Link
-            href="/auth/login"
-            className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
-          >
-            Sign in to Review
-          </Link>
-        )
-      )}
     </div>
   );
 }

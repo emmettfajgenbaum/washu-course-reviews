@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase-server";
+import { currentUser } from "@clerk/nextjs/server";
 import { notFound } from "next/navigation";
 import CourseDetail from "@/components/CourseDetail";
-import UserMenu from "@/components/UserMenu";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import Link from "next/link";
 
 export default async function CoursePage({
@@ -26,51 +28,34 @@ export default async function CoursePage({
     .eq("course_id", course.id)
     .order("created_at", { ascending: false });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await currentUser();
+  const userEmail = user?.primaryEmailAddress?.emailAddress ?? null;
 
   return (
     <div className="flex flex-col min-h-screen">
-      <header className="bg-[#2d5234] text-white px-4 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link
-            href="/"
-            className="text-xl font-bold hover:text-white/90 transition-colors"
-            style={{ fontFamily: "'Source Serif 4', serif" }}
-          >
-            WashU Course Reviews
-          </Link>
-          {user ? (
-            <UserMenu email={user.email!} />
-          ) : (
-            <Link
-              href="/auth/login"
-              className="text-sm bg-white/15 hover:bg-white/25 px-4 py-1.5 rounded-lg transition-colors"
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
-      </header>
+      <Header userEmail={userEmail} />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         <Link
           href="/"
-          className="text-sm text-[#2d5234] hover:underline mb-4 inline-block"
+          className="group inline-flex items-center gap-2 mb-5 text-base font-medium text-[#2d5234] hover:text-[#234228] transition-colors"
         >
-          &larr; Back to courses
+          <span
+            aria-hidden="true"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2d5234] text-white text-sm transition-transform group-hover:-translate-x-0.5"
+          >
+            &larr;
+          </span>
+          Back to courses
         </Link>
         <CourseDetail
           course={course}
           initialReviews={reviews || []}
-          userId={user?.id || null}
+          userId={user?.id ?? null}
         />
       </main>
 
-      <footer className="text-center text-xs text-gray-400 py-4">
-        Not affiliated with Washington University in St. Louis.
-      </footer>
+      <Footer />
     </div>
   );
 }

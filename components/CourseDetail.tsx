@@ -8,15 +8,15 @@ import Link from "next/link";
 const REVIEWS_PER_PAGE = 20;
 
 function ratingColor(value: number | null, invert = false) {
-  if (value === null) return "text-gray-400";
+  if (value === null) return "text-muted";
   if (invert) {
-    if (value < 3) return "text-green-600";
-    if (value < 4) return "text-yellow-600";
-    return "text-red-600";
+    if (value < 3) return "text-success";
+    if (value < 4) return "text-warning";
+    return "text-danger";
   }
-  if (value >= 4) return "text-green-600";
-  if (value >= 3) return "text-yellow-600";
-  return "text-red-600";
+  if (value >= 4) return "text-success";
+  if (value >= 3) return "text-warning";
+  return "text-danger";
 }
 
 export default function CourseDetail({
@@ -80,14 +80,14 @@ export default function CourseDetail({
   return (
     <div className="space-y-6">
       {/* Course info card */}
-      <div className="bg-white rounded-xl border border-[#e2ddd5] p-5 sm:p-6 space-y-5">
+      <div className="bg-surface rounded-xl border border-border p-5 sm:p-6 space-y-5">
         {/* Course header */}
         <div>
-          <p className="text-xs font-medium text-[#2d5234] tracking-wide uppercase">
+          <p className="text-xs font-medium text-primary tracking-wide uppercase">
             {course.bulletin_code || course.code.replace(/[A-Z]\d+\s+/g, "")}
           </p>
           <h1
-            className="text-2xl font-semibold text-gray-900 mt-1"
+            className="text-2xl font-semibold text-foreground mt-1"
             style={{ fontFamily: "'Source Serif 4', serif" }}
           >
             {course.name}
@@ -96,7 +96,7 @@ export default function CourseDetail({
             {[...new Set(course.departments)].map((dept) => (
               <span
                 key={dept}
-                className="text-xs bg-[#f7f5f0] text-gray-600 px-2 py-0.5 rounded-full border border-[#e2ddd5]"
+                className="text-xs bg-background text-muted-strong px-2 py-0.5 rounded-full border border-border"
               >
                 {dept}
               </span>
@@ -105,23 +105,23 @@ export default function CourseDetail({
         </div>
 
         {course.description && (
-          <p className="text-sm text-gray-700 leading-relaxed">
+          <p className="text-sm text-secondary leading-relaxed">
             {course.description}
           </p>
         )}
 
         {allInstructors.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-500 mb-1">
+            <h4 className="text-sm font-medium text-muted-strong mb-1">
               Instructors
             </h4>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-secondary">
               {allInstructors.map((inst, i) => (
                 <span key={inst}>
                   {i > 0 && ", "}
                   <Link
                     href={`/instructor/${encodeURIComponent(inst)}`}
-                    className="text-[#2d5234] hover:underline"
+                    className="text-primary hover:underline"
                   >
                     {inst}
                   </Link>
@@ -138,19 +138,19 @@ export default function CourseDetail({
               <div className={`text-2xl font-bold ${ratingColor(stats.quality)}`}>
                 {stats.quality?.toFixed(1)}
               </div>
-              <div className="text-xs text-gray-500">Quality</div>
+              <div className="text-xs text-muted-strong">Quality</div>
             </div>
             <div className="text-center">
               <div className={`text-2xl font-bold ${ratingColor(stats.difficulty, true)}`}>
                 {stats.difficulty?.toFixed(1)}
               </div>
-              <div className="text-xs text-gray-500">Difficulty</div>
+              <div className="text-xs text-muted-strong">Difficulty</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-gray-700">
+              <div className="text-2xl font-bold text-secondary">
                 {stats.count}
               </div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs text-muted-strong">
                 Reviews
               </div>
             </div>
@@ -168,14 +168,14 @@ export default function CourseDetail({
         ) : userId ? (
           <button
             onClick={() => setShowForm(true)}
-            className="w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors"
+            className="w-full py-2.5 bg-primary text-surface-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors"
           >
             Write a Review
           </button>
         ) : (
           <Link
             href="/auth/login"
-            className="block w-full py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors text-center"
+            className="block w-full py-2.5 bg-primary text-surface-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors text-center"
           >
             Sign in to Review
           </Link>
@@ -198,7 +198,7 @@ export default function CourseDetail({
                 setInstructor(e.target.value);
                 setVisibleCount(REVIEWS_PER_PAGE);
               }}
-              className="px-3 py-1.5 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+              className="px-3 py-1.5 bg-surface border border-border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
               <option value="">All Instructors</option>
               {reviewInstructors.map((i) => (
@@ -211,11 +211,11 @@ export default function CourseDetail({
         </div>
 
         {reviews.length === 0 ? (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted">
             No reviews yet. Be the first!
           </p>
         ) : filteredReviews.length === 0 ? (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-muted">
             No reviews for this instructor.
           </p>
         ) : (
@@ -223,7 +223,7 @@ export default function CourseDetail({
             {visible.map((review) => (
               <div
                 key={review.id}
-                className="bg-white border border-[#e2ddd5] rounded-lg p-4"
+                className="bg-surface border border-border rounded-lg p-4"
               >
                 <div className="flex items-center gap-4 text-sm mb-2">
                   <span>
@@ -241,21 +241,21 @@ export default function CourseDetail({
                   {review.instructor && (
                     <Link
                       href={`/instructor/${encodeURIComponent(review.instructor)}`}
-                      className="text-[#2d5234] hover:underline"
+                      className="text-primary hover:underline"
                     >
                       {review.instructor}
                     </Link>
                   )}
                 </div>
                 {review.hours_per_week && (
-                  <p className="text-xs text-gray-400 mb-1">
+                  <p className="text-xs text-muted mb-1">
                     {review.hours_per_week} hrs/week
                   </p>
                 )}
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                <p className="text-sm text-secondary whitespace-pre-wrap">
                   {review.comment}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-muted mt-2">
                   {new Date(review.created_at).toLocaleDateString()}
                 </p>
               </div>
@@ -264,7 +264,7 @@ export default function CourseDetail({
             {hasMore && (
               <button
                 onClick={() => setVisibleCount((v) => v + REVIEWS_PER_PAGE)}
-                className="w-full py-2.5 bg-white border border-[#e2ddd5] rounded-lg text-sm font-medium text-gray-600 hover:bg-[#f7f5f0] transition-colors"
+                className="w-full py-2.5 bg-surface border border-border rounded-lg text-sm font-medium text-muted-strong hover:bg-background transition-colors"
               >
                 Show More ({filteredReviews.length - visibleCount} remaining)
               </button>

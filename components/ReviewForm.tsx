@@ -87,8 +87,8 @@ export default function ReviewForm({
         onClick={() => setter(n)}
         className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
           value === n
-            ? "bg-[#2d5234] text-white"
-            : "bg-[#f7f5f0] text-gray-600 hover:bg-[#e2ddd5]"
+            ? "bg-primary text-surface-foreground"
+            : "bg-background text-muted-strong hover:bg-border"
         }`}
       >
         {n}
@@ -96,7 +96,7 @@ export default function ReviewForm({
     ));
 
   return (
-    <form onSubmit={handleSubmit} className="border-t border-[#e2ddd5] pt-5">
+    <form onSubmit={handleSubmit} className="border-t border-border pt-5">
       <h4
         className="text-lg font-semibold mb-4"
         style={{ fontFamily: "'Source Serif 4', serif" }}
@@ -106,14 +106,14 @@ export default function ReviewForm({
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm font-medium text-secondary mb-1.5">
             Quality
           </label>
           <div className="flex gap-2">{ratingButtons(quality, setQuality)}</div>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
+          <label className="block text-sm font-medium text-secondary mb-1.5">
             Difficulty
           </label>
           <div className="flex gap-2">
@@ -122,7 +122,7 @@ export default function ReviewForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-secondary mb-1">
             Instructor
           </label>
           {instructors.length > 0 ? (
@@ -136,7 +136,7 @@ export default function ReviewForm({
                     setInstructor(e.target.value);
                   }
                 }}
-                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                className="w-full px-3 py-2 border border-border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="">Select instructor...</option>
                 {instructors.map((i) => (
@@ -152,7 +152,7 @@ export default function ReviewForm({
                   value={customInstructor}
                   onChange={(e) => setCustomInstructor(e.target.value)}
                   placeholder="Enter instructor name"
-                  className="w-full mt-2 px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+                  className="w-full mt-2 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               )}
             </>
@@ -162,13 +162,13 @@ export default function ReviewForm({
               value={instructor}
               onChange={(e) => setInstructor(e.target.value)}
               placeholder="Instructor name"
-              className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+              className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           )}
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-secondary mb-1">
             Hours per week (optional)
           </label>
           <input
@@ -176,12 +176,12 @@ export default function ReviewForm({
             value={hours}
             onChange={(e) => setHours(e.target.value)}
             placeholder="e.g. 5-10"
-            className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-secondary mb-1">
             Comment
           </label>
           <textarea
@@ -189,18 +189,18 @@ export default function ReviewForm({
             onChange={(e) => setComment(e.target.value)}
             placeholder="Write your review (minimum 10 characters)..."
             rows={4}
-            className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30 resize-y"
+            className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-y"
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-danger">{error}</p>}
 
         <div className="flex gap-2">
           {onCancel && (
             <button
               type="button"
               onClick={onCancel}
-              className="flex-1 py-2.5 bg-white border border-[#e2ddd5] text-gray-700 rounded-lg text-sm font-medium hover:bg-[#f7f5f0] transition-colors"
+              className="flex-1 py-2.5 bg-surface border border-border text-secondary rounded-lg text-sm font-medium hover:bg-background transition-colors"
             >
               Cancel
             </button>
@@ -208,7 +208,7 @@ export default function ReviewForm({
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors disabled:opacity-50"
+            className="flex-1 py-2.5 bg-primary text-surface-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
           >
             {loading ? "Submitting..." : "Submit Review"}
           </button>

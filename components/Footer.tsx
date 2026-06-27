@@ -26,13 +26,13 @@ export default function Footer() {
   }
 
   return (
-    <footer className="border-t border-[#e2ddd5] bg-[#f7f5f0] mt-8">
+    <footer className="border-t border-border bg-background mt-8">
       <div className="max-w-4xl mx-auto w-full px-4 py-6">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="flex items-center gap-2 text-sm font-medium text-[#2d5234] hover:underline"
+          className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
         >
           <span>{open ? "–" : "+"}</span>
           Send feedback or a feature request
@@ -41,11 +41,11 @@ export default function Footer() {
         {open && (
           <div className="mt-4">
             {status === "success" ? (
-              <div className="text-sm text-[#2d5234] bg-white border border-[#e2ddd5] rounded-lg p-4">
+              <div className="text-sm text-primary bg-surface border border-border rounded-lg p-4">
                 Thanks! Your feedback has been recorded.
                 <button
                   type="button"
-                  className="ml-3 text-xs text-gray-500 hover:underline"
+                  className="ml-3 text-xs text-muted-strong hover:underline"
                   onClick={() => setStatus("idle")}
                 >
                   Send another
@@ -61,7 +61,7 @@ export default function Footer() {
                   minLength={5}
                   maxLength={5000}
                   rows={4}
-                  className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/40 resize-y"
+                  className="w-full px-3 py-2 border border-border rounded-lg bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-y"
                 />
                 <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                   <input
@@ -69,23 +69,23 @@ export default function Footer() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Email (optional, for replies)"
-                    className="flex-1 px-3 py-2 border border-[#e2ddd5] rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/40"
+                    className="flex-1 px-3 py-2 border border-border rounded-lg bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <button
                     type="submit"
                     disabled={status === "submitting" || message.trim().length < 5}
-                    className="px-4 py-2 bg-[#2d5234] text-white text-sm font-medium rounded-lg hover:bg-[#244226] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 bg-primary text-surface-foreground text-sm font-medium rounded-lg hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {status === "submitting" ? "Sending…" : "Send feedback"}
                   </button>
                 </div>
-                {error && <p className="text-xs text-red-600">{error}</p>}
+                {error && <p className="text-xs text-danger">{error}</p>}
               </form>
             )}
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-400 mt-6">
+        <p className="text-center text-xs text-muted mt-6">
           Not affiliated with Washington University in St. Louis.
         </p>
       </div>

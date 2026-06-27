@@ -1,7 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import UserMenu from "@/components/UserMenu";
-import ThemeToggle from "@/components/ThemeToggle";
 
 export default function Header({ userEmail }: { userEmail: string | null }) {
   return (
@@ -27,19 +26,16 @@ export default function Header({ userEmail }: { userEmail: string | null }) {
             WashU Course Reviews
           </span>
         </Link>
-        <div className="flex items-center gap-2 sm:gap-3">
-          <ThemeToggle />
-          {userEmail ? (
-            <UserMenu email={userEmail} />
-          ) : (
-            <Link
-              href="/auth/login"
-              className="shrink-0 rounded-lg bg-primary px-4 py-1.5 text-sm text-surface-foreground transition-colors hover:bg-primary-hover"
-            >
-              Sign In
-            </Link>
-          )}
-        </div>
+        {userEmail ? (
+          <UserMenu email={userEmail} />
+        ) : (
+          <Link
+            href="/auth/login"
+            className="shrink-0 rounded-lg bg-primary px-4 py-1.5 text-sm text-white transition-colors hover:bg-primary-hover"
+          >
+            Sign In
+          </Link>
+        )}
       </div>
     </header>
   );

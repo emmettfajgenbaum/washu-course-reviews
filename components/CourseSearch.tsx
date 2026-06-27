@@ -73,7 +73,7 @@ export default function CourseSearch({
   return (
     <>
       {/* Sticky search/filter bar */}
-      <div className="sticky top-0 z-40 bg-background border-b border-border py-4">
+      <div className="sticky top-0 z-40 bg-[#f7f5f0] border-b border-[#e2ddd5] py-4">
         <div className="max-w-4xl mx-auto px-4 space-y-3">
           <input
             type="text"
@@ -83,11 +83,11 @@ export default function CourseSearch({
               setVisibleCount(PAGE_SIZE);
             }}
             placeholder="Search courses, departments, instructors..."
-            className="w-full px-4 py-2.5 bg-surface border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="w-full px-4 py-2.5 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30 focus:border-[#2d5234]"
           />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
             <div className="col-span-2 sm:col-span-1">
-              <label className="block text-xs text-muted-strong mb-1">
+              <label className="block text-xs text-gray-500 mb-1">
                 Department
               </label>
               <select
@@ -102,7 +102,7 @@ export default function CourseSearch({
                     router.push("/", { scroll: false });
                   }
                 }}
-                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="">All Departments</option>
                 {departments.map((d) => (
@@ -114,7 +114,7 @@ export default function CourseSearch({
             </div>
 
             <div>
-              <label className="block text-xs text-muted-strong mb-1">
+              <label className="block text-xs text-gray-500 mb-1">
                 Reviews
               </label>
               <select
@@ -123,7 +123,7 @@ export default function CourseSearch({
                   setReviewFilter(e.target.value as "all" | "has-reviews");
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="all">All Courses</option>
                 <option value="has-reviews">Has Reviews</option>
@@ -131,7 +131,7 @@ export default function CourseSearch({
             </div>
 
             <div>
-              <label className="block text-xs text-muted-strong mb-1">
+              <label className="block text-xs text-gray-500 mb-1">
                 Sort By
               </label>
               <select
@@ -140,7 +140,7 @@ export default function CourseSearch({
                   setSortBy(e.target.value as typeof sortBy);
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full px-3 py-2 bg-surface border border-border rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full px-3 py-2 bg-white border border-[#e2ddd5] rounded-lg text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
               >
                 <option value="reviews">Most Reviews</option>
                 <option value="quality">Highest Quality</option>
@@ -150,7 +150,7 @@ export default function CourseSearch({
             </div>
 
             <div>
-              <label className="block text-xs text-muted-strong mb-1">
+              <label className="block text-xs text-gray-500 mb-1">
                 Min Quality: {minQuality.toFixed(1)}
               </label>
               <input
@@ -163,12 +163,12 @@ export default function CourseSearch({
                   setMinQuality(parseFloat(e.target.value));
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full accent-primary cursor-grab active:cursor-grabbing"
+                className="w-full accent-[#2d5234] cursor-grab active:cursor-grabbing"
               />
             </div>
 
             <div>
-              <label className="block text-xs text-muted-strong mb-1">
+              <label className="block text-xs text-gray-500 mb-1">
                 Max Difficulty: {maxDifficulty.toFixed(1)}
               </label>
               <input
@@ -181,7 +181,7 @@ export default function CourseSearch({
                   setMaxDifficulty(parseFloat(e.target.value));
                   setVisibleCount(PAGE_SIZE);
                 }}
-                className="w-full accent-primary cursor-grab active:cursor-grabbing"
+                className="w-full accent-[#2d5234] cursor-grab active:cursor-grabbing"
               />
             </div>
           </div>
@@ -190,7 +190,7 @@ export default function CourseSearch({
 
       {/* Results */}
       <div className="max-w-4xl mx-auto px-4 py-6">
-        <p className="text-sm text-muted-strong mb-4">
+        <p className="text-sm text-gray-500 mb-4">
           {filtered.length} course{filtered.length !== 1 ? "s" : ""} found
         </p>
 
@@ -206,7 +206,7 @@ export default function CourseSearch({
         {visibleCount < filtered.length && (
           <button
             onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
-            className="w-full mt-6 py-2.5 bg-surface border border-border rounded-lg text-sm font-medium text-muted-strong hover:bg-background transition-colors"
+            className="w-full mt-6 py-2.5 bg-white border border-[#e2ddd5] rounded-lg text-sm font-medium text-gray-600 hover:bg-[#f7f5f0] transition-colors"
           >
             Show More ({filtered.length - visibleCount} remaining)
           </button>

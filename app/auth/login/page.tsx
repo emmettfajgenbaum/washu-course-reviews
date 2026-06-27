@@ -122,16 +122,16 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[#f7f5f0] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <Link
           href="/"
-          className="block text-center text-sm text-primary mb-8 hover:underline"
+          className="block text-center text-sm text-[#2d5234] mb-8 hover:underline"
         >
           &larr; Back to courses
         </Link>
 
-        <div className="bg-surface rounded-xl border border-border p-8">
+        <div className="bg-white rounded-xl border border-[#e2ddd5] p-8">
           {step === "email" ? (
             <form onSubmit={handleSendCode}>
               <h1
@@ -140,14 +140,14 @@ export default function LoginPage() {
               >
                 Sign in
               </h1>
-              <p className="text-sm text-muted-strong mb-6 text-center">
+              <p className="text-sm text-gray-600 mb-6 text-center">
                 Enter your WashU email and we&apos;ll send you a verification
                 code — no password needed.
               </p>
 
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-secondary mb-1.5"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Email
               </label>
@@ -158,21 +158,21 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder={`you${DOMAIN_HINT.split(" ")[0]}`}
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
                 required
               />
 
-              {error && <p className="text-sm text-danger mt-3">{error}</p>}
+              {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading || !isLoaded}
-                className="w-full mt-5 py-2.5 bg-primary text-surface-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
+                className="w-full mt-5 py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors disabled:opacity-50"
               >
                 {loading ? "Sending code..." : "Send code"}
               </button>
 
-              <p className="text-center text-xs text-muted-strong mt-4">
+              <p className="text-center text-xs text-gray-500 mt-4">
                 Only {DOMAIN_HINT} addresses can sign in.
               </p>
             </form>
@@ -184,14 +184,14 @@ export default function LoginPage() {
               >
                 Enter your code
               </h1>
-              <p className="text-sm text-muted-strong mb-6 text-center">
+              <p className="text-sm text-gray-600 mb-6 text-center">
                 We sent a verification code to{" "}
                 <span className="font-medium">{email.trim().toLowerCase()}</span>.
               </p>
 
               <label
                 htmlFor="code"
-                className="block text-sm font-medium text-secondary mb-1.5"
+                className="block text-sm font-medium text-gray-700 mb-1.5"
               >
                 Verification code
               </label>
@@ -203,16 +203,16 @@ export default function LoginPage() {
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="123456"
                 autoFocus
-                className="w-full px-3 py-2 border border-border rounded-lg text-sm tracking-[0.3em] text-center focus:outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full px-3 py-2 border border-[#e2ddd5] rounded-lg text-sm tracking-[0.3em] text-center focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30"
                 required
               />
 
-              {error && <p className="text-sm text-danger mt-3">{error}</p>}
+              {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full mt-5 py-2.5 bg-primary text-surface-foreground rounded-lg text-sm font-medium hover:bg-primary-hover transition-colors disabled:opacity-50"
+                className="w-full mt-5 py-2.5 bg-[#2d5234] text-white rounded-lg text-sm font-medium hover:bg-[#234228] transition-colors disabled:opacity-50"
               >
                 {loading ? "Verifying..." : "Verify & continue"}
               </button>
@@ -220,7 +220,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={resetToEmail}
-                className="w-full mt-3 text-center text-xs text-muted-strong hover:underline"
+                className="w-full mt-3 text-center text-xs text-gray-500 hover:underline"
               >
                 Use a different email
               </button>

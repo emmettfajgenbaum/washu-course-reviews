@@ -7,13 +7,13 @@ import Link from "next/link";
 
 function ratingColor(value: number, invert = false) {
   if (invert) {
-    if (value < 3) return "text-success";
-    if (value < 4) return "text-warning";
-    return "text-danger";
+    if (value < 3) return "text-green-600";
+    if (value < 4) return "text-yellow-600";
+    return "text-red-600";
   }
-  if (value >= 4) return "text-success";
-  if (value >= 3) return "text-warning";
-  return "text-danger";
+  if (value >= 4) return "text-green-600";
+  if (value >= 3) return "text-yellow-600";
+  return "text-red-600";
 }
 
 export default async function InstructorPage({
@@ -69,11 +69,11 @@ export default async function InstructorPage({
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-6">
         <Link
           href="/"
-          className="group inline-flex items-center gap-2 mb-5 text-base font-medium text-primary hover:text-primary-hover transition-colors"
+          className="group inline-flex items-center gap-2 mb-5 text-base font-medium text-[#2d5234] hover:text-[#234228] transition-colors"
         >
           <span
             aria-hidden="true"
-            className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-surface-foreground text-sm transition-transform group-hover:-translate-x-0.5"
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-[#2d5234] text-white text-sm transition-transform group-hover:-translate-x-0.5"
           >
             &larr;
           </span>
@@ -83,35 +83,35 @@ export default async function InstructorPage({
         <div className="space-y-6">
           <div>
             <h1
-              className="text-2xl font-semibold text-foreground"
+              className="text-2xl font-semibold text-gray-900"
               style={{ fontFamily: "'Source Serif 4', serif" }}
             >
               {instructorName}
             </h1>
-            <p className="text-sm text-muted-strong mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               {courseIds.length} course{courseIds.length !== 1 ? "s" : ""} &middot; {reviews.length} review{reviews.length !== 1 ? "s" : ""}
             </p>
           </div>
 
           {/* Aggregate stats */}
-          <div className="flex gap-6 py-3 px-4 bg-background rounded-lg">
+          <div className="flex gap-6 py-3 px-4 bg-[#f7f5f0] rounded-lg">
             <div className="text-center">
               <div className={`text-2xl font-bold ${ratingColor(avgQuality)}`}>
                 {avgQuality.toFixed(1)}
               </div>
-              <div className="text-xs text-muted-strong">Quality</div>
+              <div className="text-xs text-gray-500">Quality</div>
             </div>
             <div className="text-center">
               <div className={`text-2xl font-bold ${ratingColor(avgDifficulty, true)}`}>
                 {avgDifficulty.toFixed(1)}
               </div>
-              <div className="text-xs text-muted-strong">Difficulty</div>
+              <div className="text-xs text-gray-500">Difficulty</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-secondary">
+              <div className="text-2xl font-bold text-gray-700">
                 {reviews.length}
               </div>
-              <div className="text-xs text-muted-strong">Reviews</div>
+              <div className="text-xs text-gray-500">Reviews</div>
             </div>
           </div>
 
@@ -131,20 +131,20 @@ export default async function InstructorPage({
                   <Link
                     key={course.id}
                     href={`/course/${course.id}`}
-                    className="block p-3 border border-border rounded-lg hover:bg-background transition-colors"
+                    className="block p-3 border border-[#e2ddd5] rounded-lg hover:bg-[#f7f5f0] transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs font-medium text-primary uppercase">
+                        <p className="text-xs font-medium text-[#2d5234] uppercase">
                           {course.bulletin_code || course.code.replace(/[A-Z]\d+\s+/g, "")}
                         </p>
-                        <p className="text-sm font-medium text-foreground">{course.name}</p>
+                        <p className="text-sm font-medium text-gray-900">{course.name}</p>
                       </div>
                       <div className="text-right">
                         <span className={`text-sm font-semibold ${ratingColor(cAvg)}`}>
                           {cAvg.toFixed(1)}
                         </span>
-                        <p className="text-xs text-muted">{courseReviews.length} reviews</p>
+                        <p className="text-xs text-gray-400">{courseReviews.length} reviews</p>
                       </div>
                     </div>
                   </Link>
@@ -167,7 +167,7 @@ export default async function InstructorPage({
                 return (
                   <div
                     key={review.id}
-                    className="bg-surface border border-border rounded-lg p-4"
+                    className="bg-white border border-[#e2ddd5] rounded-lg p-4"
                   >
                     <div className="flex items-center gap-4 text-sm mb-2">
                       <span>
@@ -185,21 +185,21 @@ export default async function InstructorPage({
                       {course && (
                         <Link
                           href={`/course/${course.id}`}
-                          className="text-primary hover:underline"
+                          className="text-[#2d5234] hover:underline"
                         >
                           {course.bulletin_code || course.code.replace(/[A-Z]\d+\s+/g, "")}
                         </Link>
                       )}
                     </div>
                     {review.hours_per_week && (
-                      <p className="text-xs text-muted mb-1">
+                      <p className="text-xs text-gray-400 mb-1">
                         {review.hours_per_week} hrs/week
                       </p>
                     )}
-                    <p className="text-sm text-secondary whitespace-pre-wrap">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
                       {review.comment}
                     </p>
-                    <p className="text-xs text-muted mt-2">
+                    <p className="text-xs text-gray-400 mt-2">
                       {new Date(review.created_at).toLocaleDateString()}
                     </p>
                   </div>

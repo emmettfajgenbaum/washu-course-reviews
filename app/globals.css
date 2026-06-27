@@ -1,61 +1,15 @@
 @import "tailwindcss";
 
-/* Make the Tailwind v4 `dark:` variant selector/class-based (next-themes puts
-   class="dark" on <html>). Must sit right after the import. */
-@custom-variant dark (&:where(.dark, .dark *));
-
 :root {
-  --background: #f7f5f0; /* warm cream page background */
-  --foreground: #1a1a1a; /* near-black body text */
+  --background: #f7f5f0;
+  --foreground: #1a1a1a;
 
   /* Brand palette */
   --primary: #2d5234; /* green — top bar, buttons, links, accents */
   --primary-hover: #234228; /* darker green for hover states */
   --cream: #f7f5f0; /* page / surface background */
-
-  /* Structure */
-  --surface: #ffffff; /* raised surface (white cards on cream) */
-  --surface-foreground: #ffffff; /* text/icon ON primary or dark fills (white in light) */
-  --card: #ffffff; /* card background (alias of surface) */
   --border: #e2ddd5; /* warm border + dividers */
   --slate: #1e293b; /* dark slate — headings / primary text */
-
-  /* Text levels (warm, AA-tuned) */
-  --muted: #6b6258; /* warm muted secondary text (gray-400/500 replacement) */
-  --muted-strong: #4d4640; /* warm muted, higher-contrast secondary text */
-  --secondary: #3b352e; /* warm dark labels / secondary text (gray-700 replacement) */
-
-  /* Status (deepened from raw red/yellow/green-600 to pass AA on white + cream) */
-  --danger: #dc2626;
-  --warning: #b45309; /* deepened amber (yellow-600 alone fails AA) */
-  --success: #15803d; /* deepened green (green-600 alone fails AA) */
-}
-
-.dark {
-  --background: #1a1713; /* warm brown-black page background */
-  --foreground: #f3efe6; /* warm cream-white body text */
-
-  /* Brand — green lifted for contrast on dark */
-  --primary: #63a873; /* lifted WashU green for links/accents/buttons */
-  --primary-hover: #6fb37e; /* brighter green on hover (dark convention) */
-  --cream: #211d16; /* warm dark "cream" surface — top bar / cream fills */
-
-  /* Structure — warm raised surface + low-contrast warm border */
-  --surface: #2a251e; /* slightly raised warm card surface */
-  --surface-foreground: #1a1713; /* near-black text on primary fills (white = 2.77:1, fails AA) */
-  --card: #2a251e; /* card background (alias of surface) */
-  --border: #736652; /* warm low-contrast divider */
-  --slate: #f7f4ec; /* heading = brightest warm white for emphasis */
-
-  /* Text levels — warm grays */
-  --muted: #a89e8f; /* warm muted secondary text */
-  --muted-strong: #c4baa9; /* warm muted, higher-contrast secondary text */
-  --secondary: #ddd4c5; /* warm light labels / secondary text */
-
-  /* Status — lifted for legibility on warm dark */
-  --danger: #f0857a; /* warm coral-red */
-  --warning: #f2b350; /* warm amber */
-  --success: #5cc47a; /* fresh green (distinct from brand primary) */
 }
 
 @theme inline {
@@ -64,18 +18,8 @@
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
   --color-cream: var(--cream);
-  --color-surface: var(--surface);
-  --color-surface-foreground: var(--surface-foreground);
-  --color-card: var(--card);
   --color-border: var(--border);
   --color-slate: var(--slate);
-  --color-heading: var(--slate); /* alias so text-heading == text-slate */
-  --color-muted: var(--muted);
-  --color-muted-strong: var(--muted-strong);
-  --color-secondary: var(--secondary);
-  --color-danger: var(--danger);
-  --color-warning: var(--warning);
-  --color-success: var(--success);
 }
 
 body {

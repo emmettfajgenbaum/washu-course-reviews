@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# washu-course-reviews
 
-## Getting Started
+Anonymous course and instructor reviews for Washington University students, live at
+**[washucoursereviews.org](https://washucoursereviews.org)**. Shipped and quiet — it runs itself.
 
-First, run the development server:
+Only students can get in. Only students can post.
+
+## Stack
+
+- **Next.js 16**, App Router, TypeScript, Tailwind
+- **Supabase** (Postgres) for courses, instructors, and reviews
+- **Clerk** for auth, email magic-link only
+- **Vercel** for hosting and the daily cron
+
+## The @wustl.edu gate
+
+Sign-in is restricted to `wustl.edu` and `washu.edu`. That rule lives in exactly one place —
+[`lib/auth-domains.ts`](lib/auth-domains.ts) — and is enforced in three, deliberately:
+
+1. `app/auth/login` refuses to send a magic link to an outside address.
+2. `proxy.ts` redirects an already-signed-in wrong-domain user to `/auth/domain-error` before any page renders.
+3. `app/actions/reviews.ts` rejects the write server-side.
+
+Add a domain in `auth-domains.ts` and all three follow. Never hardcode a domain at a call site.
+
+## Pages
+
+| Route | What it is |
+|---|---|
+| `app/page.tsx` | Search and browse |
+| `app/course/[id]` | One course, its reviews, its instructors |
+| `app/instructor/[name]` | One instructor across courses |
+| `app/auth/login` | Magic-link request |
+| `app/auth/domain-error` | The "you're not a WashU address" wall |
+| `app/api/keep-alive` | Cron target — see below |
+
+## The daily cron, and why it exists
+
+`vercel.json` hits `/api/keep-alive` at 08:00 UTC every day. **The free Supabase tier auto-pauses a
+project after a week without activity**, and a paused database takes the site down. This request exists
+only to keep it awake.
+
+That route fails closed on `CRON_SECRET`: Vercel Cron sends it as `Authorization: Bearer <value>`, and a
+missing or mismatched value returns 401. **If `CRON_SECRET` is not set in the Vercel project env, the
+cron 401s silently and the database eventually pauses.** It is listed in `.env.local.example` for that reason.
+
+## Local setup
 
 ```bash
+npm install
+cp .env.local.example .env.local   # then fill in Supabase + Clerk values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Apply `supabase/migrations/*.sql` **in filename order** against a fresh database. Note that two files
+share the `003_` prefix (`003_add_feedback.sql` and `003_clerk_auth.sql`); they are independent and
+either order works, but everything numbered `004_` and later assumes both have run.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts — one-time imports, not part of the app
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Nothing under `scripts/` runs in production. They were used to populate the database once and are kept
+so the import is repeatable.
 
-## Learn More
+**Four of them read `Course_Reviews.xlsx` from the repo root, and that file is not in the repo.**
+Emmett supplies it; it is gitignored on purpose so course data never lands in a public repo. Drop it at
+the repo root before running any of these or they throw on `XLSX.readFile`:
 
-To learn more about Next.js, take a look at the following resources:
+| Script | Needs the workbook | What it does |
+|---|:--:|---|
+| `seed-courses.js` | yes | First load of the course catalog |
+| `gen-reviews.js` | yes | Builds the review rows |
+| `fix-reviews.js` | yes | Repairs rows from an earlier import |
+| `seed-reviews-api.js` | yes | Writes reviews through the API rather than direct SQL |
+| `dedupe-departments.js` | no | Removes duplicate values inside `courses.departments` |
+| `update-descriptions.js` | no | Refreshes course descriptions |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`scripts/seed-reviews.sql` is generated output (~2 MB) and is gitignored.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`xlsx` and `cheerio` sit in `dependencies` but are used only by these scripts, so Vercel installs them
+into every production build. `xlsx@0.18.5` carries two high-severity advisories with no fixed version on
+npm — SheetJS stopped publishing there. Moving both to `devDependencies` would take them out of the
+production build.
 
-## Deploy on Vercel
+## Gotcha
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`.remember` is a symlink to the shared Claude Code history pool above this directory. It **must** stay
+gitignored: Tailwind v4 source-detection follows it out of the project root and Turbopack then 500s every
+`next dev` request, while `next build` keeps passing.

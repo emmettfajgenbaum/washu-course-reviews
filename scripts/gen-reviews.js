@@ -1,3 +1,7 @@
+// Reads Course_Reviews.xlsx from the repo root. Emmett supplies that workbook; it is
+// gitignored on purpose so course data never lands in a public repo. Without it this
+// script throws on XLSX.readFile. See README.md § Scripts.
+
 const XLSX = require("xlsx");
 const { createClient } = require("@supabase/supabase-js");
 const crypto = require("crypto");

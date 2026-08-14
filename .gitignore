@@ -47,3 +47,8 @@ scripts/seed-reviews.sql
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Claude Code history pool — a symlink out of the project root.
+# Tailwind v4 auto-source-detection follows it and Turbopack then dies with
+# "leaves the filesystem root", 500ing every dev request. Must stay ignored.
+.remember

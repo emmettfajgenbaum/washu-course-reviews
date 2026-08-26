@@ -1,0 +1,52 @@
+# Monthly data refresh: WashU undergrad catalog from bulletin.wustl.edu and
+# professor ratings from RateMyProfessors.
+#
+# Runs on GitHub Actions rather than Vercel Cron because the rate-limited crawl
+# takes minutes (past Hobby function limits). Requires two repository secrets
+# that mirror the Vercel production values (docs/washu-prod-env-vars.md):
+#   NEXT_PUBLIC_SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+#
+# Both scripts are dry-run by default; this workflow passes --apply on
+# scheduled runs. Trigger it manually with dry_run to preview a sync — the run
+# summary lists every planned insert/update and everything skipped as
+# ambiguous.
+
+name: Sync course and RMP data
+
+on:
+  schedule:
+    - cron: "20 9 3 * *" # 3rd of every month, 09:20 UTC
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only — report what would change without writing"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      APPLY_FLAG: ${{ (github.event_name == 'schedule' || inputs.dry_run == false) && '--apply' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Sync courses from the WashU bulletin
+        run: node scripts/sync-courses.js $APPLY_FLAG
+
+      - name: Sync professor ratings from RateMyProfessors
+        run: node scripts/sync-rmp.js $APPLY_FLAG

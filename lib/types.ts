@@ -35,3 +35,16 @@ export interface ReviewFlag {
   reason: string;
   created_at: string;
 }
+
+export interface RmpInstructor {
+  id: number;
+  legacy_id: number;
+  first_name: string;
+  last_name: string;
+  quality: number | null;
+  difficulty: number | null;
+  would_take_again: number | null;
+  num_ratings: number;
+  department: string;
+  synced_at: string;
+}

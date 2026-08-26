@@ -16,6 +16,23 @@
 --   * No rows are deleted. Only the bulletin_code column is updated, and only
 --     on rows whose code is duplicated.
 --   * Reviews are untouched.
+--   * The cleared values are snapshotted first into bulletin_code_backup_005,
+--     so the old code->row mapping stays recoverable (the free Supabase tier
+--     has no point-in-time restore). Restore a row with:
+--       update courses c set bulletin_code = b.bulletin_code
+--       from bulletin_code_backup_005 b where b.id = c.id and c.id = <id>;
+
+create table bulletin_code_backup_005 as
+select id, bulletin_code
+from courses
+where bulletin_code <> ''
+  and bulletin_code in (
+    select bulletin_code
+    from courses
+    where bulletin_code <> ''
+    group by bulletin_code
+    having count(*) > 1
+  );
 
 update courses
 set bulletin_code = ''
@@ -31,6 +48,12 @@ where bulletin_code <> ''
 create unique index courses_bulletin_code_key
   on courses (bulletin_code)
   where bulletin_code <> '';
+
+-- Where each course row came from: 'xlsx' for the original import (every row
+-- existing before this migration), 'bulletin' for rows the scraper inserts.
+-- This is the handle for identifying — and if ever necessary, deleting — a bad
+-- wave of scraper inserts without touching the reviewed xlsx-era rows.
+alter table courses add column source text not null default 'xlsx';
 
 -- Part 2 — RateMyProfessors instructor ratings.
 --

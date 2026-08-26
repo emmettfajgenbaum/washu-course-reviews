@@ -52,3 +52,6 @@ scripts/seed-reviews.sql
 # Tailwind v4 auto-source-detection follows it and Turbopack then dies with
 # "leaves the filesystem root", 500ing every dev request. Must stay ignored.
 .remember
+
+# monthly sync output (full change plan; uploaded as a CI artifact)
+sync-courses-plan.json

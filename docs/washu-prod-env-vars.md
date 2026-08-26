@@ -1,4 +1,11 @@
-# Production env vars live only in Vercel
+# Production env vars live in Vercel — plus two copies in GitHub Actions
+
+> **Update (2026-08):** two of the values below are now ALSO stored as GitHub repository secrets
+> (`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`), because the monthly data sync
+> (`.github/workflows/sync-data.yml`) runs on GitHub Actions, not Vercel. **When rotating the
+> service-role key, update it in BOTH places** — Vercel Production *and* GitHub → Settings →
+> Secrets and variables → Actions — or the monthly sync keeps running with the old key (or fails
+> silently every month with the revoked one). Everything else below still holds.
 
 > **Moved out of the Claude memory pool on 2026-08-14.** It was a fact about this project living in
 > `claude-home/memory/`, where only Claude Code sessions on Emmett's Mac would ever see it. It belongs

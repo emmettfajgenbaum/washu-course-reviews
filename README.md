@@ -58,9 +58,15 @@ either order works, but everything numbered `004_` and later assumes both have r
 
 ## The monthly data sync
 
-`.github/workflows/sync-data.yml` runs on the 3rd of every month (and on demand via
-*Run workflow*, which has a dry-run option). It runs two scripts, both of which are
-**dry-run by default** and only write when passed `--apply`:
+`.github/workflows/sync-data.yml` runs on the 3rd of every month. Scheduled runs write;
+**a manual *Run workflow* is a preview unless the "Write changes" box is checked**, so a stray
+click can never touch production. Every run uploads `sync-courses-plan.json` as an artifact
+(kept 90 days) — the full change plan including the previous value of every field an update
+touches, which is the recovery record if a run ever writes garbage (the free Supabase tier has
+no point-in-time restore). The workflow also re-enables itself on every run so GitHub's 60-day
+inactivity rule can't silently kill the schedule on a quiet repo.
+
+It runs two scripts, both **dry-run by default** and only writing when passed `--apply`:
 
 - **`scripts/sync-courses.js`** crawls every program page under
   `bulletin.wustl.edu/undergrad/` (discovered by following links — no hardcoded page list) and
@@ -78,9 +84,17 @@ either order works, but everything numbered `004_` and later assumes both have r
   RMP's terms of use restrict automated access; this is a deliberate, low-volume monthly batch.
 
 The workflow needs two repository secrets mirroring the Vercel production values
-(`docs/washu-prod-env-vars.md`): `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
-Without them every run fails at the env check. Both scripts also run locally against
-`.env.local`, dry-run unless `--apply`.
+(`docs/washu-prod-env-vars.md`, which documents the rotate-in-both-places rule):
+`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Without them every run fails at
+the env check. Both scripts also run locally against `.env.local`, dry-run unless `--apply`.
+
+**First-run order matters:** add the two secrets, apply migration 005, then immediately
+trigger the workflow manually — first as a preview, and once the summary looks right, again
+with "Write changes" checked. Migration 005 clears the `bulletin_code` values the old script
+had stamped onto multiple rows, and search matches on that column, so the gap between
+migrating and the first applied sync should be minutes, not until the 3rd of the month.
+Courses whose codes stay ambiguous land in the run summary's "Skipped" list for hand review;
+`bulletin_code_backup_005` (created by the migration) holds every cleared value.
 
 ## Scripts — one-time imports, not part of the app
 

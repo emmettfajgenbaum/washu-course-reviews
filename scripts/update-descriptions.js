@@ -1,3 +1,16 @@
+// SUPERSEDED — this script must not run again. Its name-only matching stamps
+// the same bulletin_code onto every course sharing a title, which is exactly
+// the corruption migration 005 cleaned up, and its writes would now collide
+// with the unique bulletin_code index that sync-courses.js relies on as
+// course identity. Use scripts/sync-courses.js instead. Kept only so the
+// original import remains readable.
+console.error(
+  "update-descriptions.js is superseded by sync-courses.js and refuses to run —\n" +
+    "its name-only matching corrupts bulletin_code identity (see migration 005).\n" +
+    "Run: node scripts/sync-courses.js"
+);
+process.exit(1);
+
 const { createClient } = require("@supabase/supabase-js");
 const cheerio = require("cheerio");
 

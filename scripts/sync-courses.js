@@ -57,6 +57,10 @@ const BASE_URL = "https://bulletin.wustl.edu";
 const SEED_PATH = "/undergrad/";
 const CRAWL_DELAY_MS = 500;
 const MAX_PAGES = 400;
+// The real undergrad catalog is thousands of courses. A crawl that comes back
+// with fewer than this has almost certainly hit a redesign or an outage, and
+// writing its output would mass-corrupt descriptions — abort instead.
+const MIN_EXPECTED_COURSES = 500;
 const MAX_DEPTH = 3; // /undergrad/ -> school -> program (bulletin nests at most this deep)
 const USER_AGENT =
   "washucoursereviews-sync/1.0 (+https://washucoursereviews.org; monthly catalog refresh)";
@@ -269,13 +273,23 @@ function reconcile(byCode, dbCourses) {
     byName.get(key).push(row);
   }
 
-  const updates = []; // { id, fields, why }
+  const updates = []; // { id, fields, prev, why }
   const inserts = []; // course rows
   const skipped = []; // { code, name, reason }
   const nameConflicts = [];
   // Codes claimed this run (existing + planned), so two scraped courses can
   // never be pointed at, or inserted as, the same identity.
   const claimedCodes = new Set(byBulletinCode.keys());
+  // DB rows claimed this run, so two scraped courses sharing a name (e.g. a
+  // cross-listing under two codes) can never both attach to the same row.
+  const claimedRowIds = new Set();
+  // Prior values of every field an update changes, kept in the plan so a bad
+  // run is reversible from the uploaded artifact.
+  const prevOf = (row, fields) => {
+    const prev = {};
+    for (const key of Object.keys(fields)) prev[key] = row[key];
+    return prev;
+  };
 
   for (const entry of byCode.values()) {
     const departments = Array.from(entry.departments, canonicalDept);
@@ -298,8 +312,16 @@ function reconcile(byCode, dbCourses) {
       if (normalize(entry.name) !== normalize(codeMatch.name)) fields.name = entry.name;
       const mergedDepts = mergeDepartments(codeMatch.departments || [], departments);
       if (mergedDepts.length !== (codeMatch.departments || []).length) fields.departments = mergedDepts;
+      claimedRowIds.add(codeMatch.id);
       if (Object.keys(fields).length > 0) {
-        updates.push({ id: codeMatch.id, code: entry.code, name: entry.name, fields, why: "code match" });
+        updates.push({
+          id: codeMatch.id,
+          code: entry.code,
+          name: entry.name,
+          fields,
+          prev: prevOf(codeMatch, fields),
+          why: "code match",
+        });
       }
       continue;
     }
@@ -308,7 +330,8 @@ function reconcile(byCode, dbCourses) {
     //    no competing bulletin_code, and only when it is unambiguous.
     const nameKey = normalize(entry.name);
     const deptKeys = new Set(departments.map(normalize));
-    const candidates = (byName.get(nameKey) || []).filter((row) =>
+    const sameName = byName.get(nameKey) || [];
+    const candidates = sameName.filter((row) =>
       (row.departments || []).some((d) => deptKeys.has(normalize(d)))
     );
 
@@ -322,11 +345,22 @@ function reconcile(byCode, dbCourses) {
         });
         continue;
       }
+      if (claimedRowIds.has(row.id)) {
+        // A cross-listing already attached another code to this row this run;
+        // attaching a second one would silently collapse two codes onto it.
+        skipped.push({
+          code: entry.code,
+          name: entry.name,
+          reason: `existing course ${row.id} was already matched by another bulletin code this run`,
+        });
+        continue;
+      }
       if (claimedCodes.has(entry.code)) {
         skipped.push({ code: entry.code, name: entry.name, reason: "code already claimed this run" });
         continue;
       }
       claimedCodes.add(entry.code);
+      claimedRowIds.add(row.id);
       const fields = { bulletin_code: entry.code };
       if (
         entry.description.length > 20 &&
@@ -336,7 +370,14 @@ function reconcile(byCode, dbCourses) {
       }
       const mergedDepts = mergeDepartments(row.departments || [], departments);
       if (mergedDepts.length !== (row.departments || []).length) fields.departments = mergedDepts;
-      updates.push({ id: row.id, code: entry.code, name: entry.name, fields, why: "unique name+dept match" });
+      updates.push({
+        id: row.id,
+        code: entry.code,
+        name: entry.name,
+        fields,
+        prev: prevOf(row, fields),
+        why: "unique name+dept match",
+      });
       continue;
     }
 
@@ -351,7 +392,22 @@ function reconcile(byCode, dbCourses) {
       continue;
     }
 
-    // 3. Genuinely new course.
+    // The name exists in the DB but only under other departments. That is
+    // either a genuinely distinct course or a department-vocabulary mismatch
+    // (xlsx strings vs bulletin page titles) — inserting on a guess is exactly
+    // how a duplicate listing happens, so it goes to the hand-review queue.
+    if (sameName.length > 0) {
+      skipped.push({
+        code: entry.code,
+        name: entry.name,
+        reason: `name already exists under other department(s) (ids ${sameName
+          .map((c) => c.id)
+          .join(", ")}) — distinct course or department-vocabulary mismatch; review by hand`,
+      });
+      continue;
+    }
+
+    // 3. Genuinely new course: the name appears nowhere in the DB.
     if (claimedCodes.has(entry.code)) {
       skipped.push({ code: entry.code, name: entry.name, reason: "code already claimed this run" });
       continue;
@@ -365,6 +421,7 @@ function reconcile(byCode, dbCourses) {
       instructors: [],
       description: entry.description,
       last_offered: "",
+      source: "bulletin",
     });
   }
 
@@ -385,8 +442,10 @@ async function main() {
   const { byCode, pagesVisited, pagesWithCourses } = await crawl();
   console.log(`\nCrawled ${pagesVisited} pages (${pagesWithCourses} with courses); found ${byCode.size} unique course codes.`);
 
-  if (byCode.size === 0) {
-    console.error("No courses scraped — bulletin markup may have changed. Aborting before touching the DB.");
+  if (byCode.size < MIN_EXPECTED_COURSES) {
+    console.error(
+      `Only ${byCode.size} courses scraped (expected at least ${MIN_EXPECTED_COURSES}) — the bulletin's markup or availability has likely changed. Aborting before touching the DB.`
+    );
     process.exit(1);
   }
 
@@ -447,6 +506,21 @@ async function main() {
     ].join("\n");
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + "\n");
   }
+
+  // Full change plan, including the previous value of every field an update
+  // touches. In CI this is uploaded as an artifact — it is the record that
+  // makes a bad run reversible (the free Supabase tier has no point-in-time
+  // restore), so it is written before any write happens.
+  const planPath = path.resolve(process.cwd(), "sync-courses-plan.json");
+  fs.writeFileSync(
+    planPath,
+    JSON.stringify(
+      { ranAt: new Date().toISOString(), mode: APPLY ? "apply" : "dry-run", updates, inserts, skipped },
+      null,
+      2
+    )
+  );
+  console.log(`\nFull change plan (with previous values) written to ${planPath}`);
 
   if (!APPLY) {
     console.log("\nDRY RUN complete. Re-run with --apply to write these changes.");

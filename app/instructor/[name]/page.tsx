@@ -41,9 +41,8 @@ export default async function InstructorPage({
     .eq("instructor", lastName)
     .order("created_at", { ascending: false });
 
-  const reviews = (exactReviews && exactReviews.length > 0)
-    ? exactReviews
-    : lastNameReviews;
+  const hasExactReviews = !!(exactReviews && exactReviews.length > 0);
+  const reviews = hasExactReviews ? exactReviews : lastNameReviews;
 
   if (!reviews || reviews.length === 0) notFound();
 
@@ -62,10 +61,13 @@ export default async function InstructorPage({
 
   // RateMyProfessors match — only shown when we are confident: the page's
   // first AND last name must both match an RMP professor exactly
-  // (case-insensitive). Last-name-only instructor pages never match.
+  // (case-insensitive), AND the reviews shown actually belong to that exact
+  // name. When the page fell back to bare last-name review matching, the
+  // reviews may be someone else's, so no RMP box — anything less would put
+  // one person's ratings above another person's reviews.
   let rmp: RmpInstructor | null = null;
   const nameParts = instructorName.trim().split(/\s+/);
-  if (nameParts.length >= 2) {
+  if (hasExactReviews && nameParts.length >= 2) {
     // ilike without wildcards = case-insensitive equality; escape the ilike
     // metacharacters so a stray % or _ in a name can't widen the match.
     const escape = (s: string) => s.replace(/[\\%_]/g, "\\$&");

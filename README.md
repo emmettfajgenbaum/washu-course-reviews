@@ -73,14 +73,17 @@ It runs two scripts, both **dry-run by default** and only writing when passed `-
   reconciles the course blocks against the `courses` table. Accuracy over coverage: a scraped
   course is matched by `bulletin_code` first, then by name **only** when exactly one existing
   course shares the name and a department; anything ambiguous is skipped and listed in the run
-  summary instead of guessed at. New courses are inserted; nothing is ever deleted, and a unique
+  summary instead of guessed at. Per-student registration shells ("Independent Study" and its
+  variants — see `EXCLUDED_GENERIC_TITLES` in the script) are excluded entirely, per Emmett.
+  New courses are inserted; nothing is ever deleted, and a unique
   index on `bulletin_code` (migration 005) means a matching bug fails loudly instead of creating
   a duplicate listing. It supersedes `scripts/update-descriptions.js`, whose name-only matching
   polluted `bulletin_code` — migration 005 also cleans that up.
 - **`scripts/sync-rmp.js`** pulls every WashU professor's quality/difficulty ratings from
   RateMyProfessors' GraphQL endpoint into `rmp_instructors`, upserted on RMP's professor id.
   The instructor page shows the RMP row **only when the instructor's first and last name both
-  match exactly** (no fuzzy matching), with a link to the RMP profile as the citation. Note:
+  match exactly one RMP professor** (no fuzzy matching; two RMP professors sharing a name means
+  neither is shown), with a link to the RMP profile as the citation. Note:
   RMP's terms of use restrict automated access; this is a deliberate, low-volume monthly batch.
 
 The workflow needs two repository secrets mirroring the Vercel production values

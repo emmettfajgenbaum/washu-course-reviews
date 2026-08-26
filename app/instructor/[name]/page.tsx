@@ -60,11 +60,13 @@ export default async function InstructorPage({
   const avgDifficulty = reviews.reduce((s, r) => s + r.difficulty, 0) / reviews.length;
 
   // RateMyProfessors match — only shown when we are confident: the page's
-  // first AND last name must both match an RMP professor exactly
-  // (case-insensitive), AND the reviews shown actually belong to that exact
-  // name. When the page fell back to bare last-name review matching, the
-  // reviews may be someone else's, so no RMP box — anything less would put
-  // one person's ratings above another person's reviews.
+  // first AND last name must both match exactly ONE RMP professor
+  // (case-insensitive; two RMP professors sharing the name means we can't tell
+  // which one this is, so neither is shown), AND the reviews shown actually
+  // belong to that exact name. When the page fell back to bare last-name
+  // review matching, the reviews may be someone else's, so no RMP box —
+  // anything less would put one person's ratings above another person's
+  // reviews.
   let rmp: RmpInstructor | null = null;
   const nameParts = instructorName.trim().split(/\s+/);
   if (hasExactReviews && nameParts.length >= 2) {
@@ -77,9 +79,8 @@ export default async function InstructorPage({
       .ilike("first_name", escape(nameParts[0]))
       .ilike("last_name", escape(nameParts[nameParts.length - 1]))
       .gt("num_ratings", 0)
-      .order("num_ratings", { ascending: false })
-      .limit(1);
-    rmp = rmpMatches?.[0] ?? null;
+      .limit(2);
+    rmp = rmpMatches?.length === 1 ? rmpMatches[0] : null;
   }
 
   const user = await currentUser();

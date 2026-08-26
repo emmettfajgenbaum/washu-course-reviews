@@ -238,6 +238,17 @@ function mergeDepartments(existing, incoming) {
   return out;
 }
 
+// Per-student registration shells the site doesn't list: "Independent Study"
+// exists in every department, carries no shared content to review, and is the
+// worst offender for name-collision mismatches. The scraper never inserts,
+// updates, or attaches these; existing DB rows are left alone. Extend the list
+// to exclude more catalog filler.
+const EXCLUDED_GENERIC_TITLES = ["independent study"];
+function isExcludedGenericTitle(name) {
+  const n = normalize(name);
+  return EXCLUDED_GENERIC_TITLES.some((t) => n === t || n.startsWith(t + " "));
+}
+
 // Pure reconciliation of scraped courses against DB rows. Returns the write
 // plan without touching the network, so the accuracy rules are testable.
 function reconcile(byCode, dbCourses) {
@@ -291,7 +302,13 @@ function reconcile(byCode, dbCourses) {
     return prev;
   };
 
+  const excluded = []; // { code, name } — generic titles dropped on purpose
+
   for (const entry of byCode.values()) {
+    if (isExcludedGenericTitle(entry.name)) {
+      excluded.push({ code: entry.code, name: entry.name });
+      continue;
+    }
     const departments = Array.from(entry.departments, canonicalDept);
     if (entry.nameConflicts.size > 0) {
       nameConflicts.push(
@@ -425,7 +442,7 @@ function reconcile(byCode, dbCourses) {
     });
   }
 
-  return { updates, inserts, skipped, nameConflicts, newDeptStrings };
+  return { updates, inserts, skipped, excluded, nameConflicts, newDeptStrings };
 }
 
 async function main() {
@@ -452,7 +469,7 @@ async function main() {
   const dbCourses = await fetchDbCourses();
   console.log(`Fetched ${dbCourses.length} courses from the database.\n`);
 
-  const { updates, inserts, skipped, nameConflicts, newDeptStrings } = reconcile(byCode, dbCourses);
+  const { updates, inserts, skipped, excluded, nameConflicts, newDeptStrings } = reconcile(byCode, dbCourses);
 
   // --- Report ---
   const lines = [];
@@ -461,6 +478,7 @@ async function main() {
   lines.push(`Updates: ${updates.length}`);
   lines.push(`Inserts (new courses): ${inserts.length}`);
   lines.push(`Skipped (ambiguous/conflicting): ${skipped.length}`);
+  lines.push(`Excluded generic titles (e.g. Independent Study): ${excluded.length}`);
   lines.push(`New department strings introduced: ${newDeptStrings.size}`);
 
   console.log("\n===== Summary =====");
@@ -515,7 +533,7 @@ async function main() {
   fs.writeFileSync(
     planPath,
     JSON.stringify(
-      { ranAt: new Date().toISOString(), mode: APPLY ? "apply" : "dry-run", updates, inserts, skipped },
+      { ranAt: new Date().toISOString(), mode: APPLY ? "apply" : "dry-run", updates, inserts, skipped, excluded },
       null,
       2
     )

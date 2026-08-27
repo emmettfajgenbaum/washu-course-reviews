@@ -150,7 +150,10 @@ async function crawl() {
   // bulletin code -> { code, name, description, departments:Set, pages:[], nameConflicts:Set }
   const byCode = new Map();
   let pagesWithCourses = 0;
-  let droppedLinks = 0;
+  // Distinct paths, not hit counts: the same undiscovered link appears on many
+  // pages, and counting occurrences would inflate the number the operator uses
+  // to decide how far to raise MAX_PAGES.
+  const droppedPaths = new Set();
 
   while (queue.length > 0) {
     const { path: pagePath, depth } = queue.shift();
@@ -166,7 +169,7 @@ async function crawl() {
         if (visited.size >= MAX_PAGES) {
           // Never drop a page silently: a truncated crawl looks exactly like a
           // shrinking catalog, and that is how whole schools go missing.
-          droppedLinks++;
+          droppedPaths.add(link);
           continue;
         }
         visited.add(link);
@@ -204,7 +207,7 @@ async function crawl() {
     }
   }
 
-  return { byCode, pagesVisited: visited.size, pagesWithCourses, droppedLinks };
+  return { byCode, pagesVisited: visited.size, pagesWithCourses, droppedLinks: droppedPaths.size };
 }
 
 async function fetchDbCourses() {

@@ -56,7 +56,7 @@ let supabase; // created in main(), so requiring this file for its pure function
 const BASE_URL = "https://bulletin.wustl.edu";
 const SEED_PATH = "/undergrad/";
 const CRAWL_DELAY_MS = 500;
-const MAX_PAGES = 400;
+const MAX_PAGES = 1500;
 // The real undergrad catalog is thousands of courses. A crawl that comes back
 // with fewer than this has almost certainly hit a redesign or an outage, and
 // writing its output would mass-corrupt descriptions — abort instead.
@@ -150,12 +150,9 @@ async function crawl() {
   // bulletin code -> { code, name, description, departments:Set, pages:[], nameConflicts:Set }
   const byCode = new Map();
   let pagesWithCourses = 0;
+  let droppedLinks = 0;
 
   while (queue.length > 0) {
-    if (visited.size > MAX_PAGES) {
-      console.warn(`Page cap of ${MAX_PAGES} reached; stopping crawl. Remaining queue: ${queue.length}`);
-      break;
-    }
     const { path: pagePath, depth } = queue.shift();
     const html = await fetchPage(pagePath);
     await sleep(CRAWL_DELAY_MS);
@@ -165,10 +162,15 @@ async function crawl() {
 
     if (depth < MAX_DEPTH) {
       for (const link of extractUndergradLinks($)) {
-        if (!visited.has(link) && visited.size < MAX_PAGES) {
-          visited.add(link);
-          queue.push({ path: link, depth: depth + 1 });
+        if (visited.has(link)) continue;
+        if (visited.size >= MAX_PAGES) {
+          // Never drop a page silently: a truncated crawl looks exactly like a
+          // shrinking catalog, and that is how whole schools go missing.
+          droppedLinks++;
+          continue;
         }
+        visited.add(link);
+        queue.push({ path: link, depth: depth + 1 });
       }
     }
 
@@ -202,7 +204,7 @@ async function crawl() {
     }
   }
 
-  return { byCode, pagesVisited: visited.size, pagesWithCourses };
+  return { byCode, pagesVisited: visited.size, pagesWithCourses, droppedLinks };
 }
 
 async function fetchDbCourses() {
@@ -456,7 +458,7 @@ async function main() {
   console.log(APPLY ? "MODE: APPLY (will write changes)\n" : "MODE: DRY RUN (no writes)\n");
 
   console.log("Crawling bulletin.wustl.edu/undergrad/ ...");
-  const { byCode, pagesVisited, pagesWithCourses } = await crawl();
+  const { byCode, pagesVisited, pagesWithCourses, droppedLinks } = await crawl();
   console.log(`\nCrawled ${pagesVisited} pages (${pagesWithCourses} with courses); found ${byCode.size} unique course codes.`);
 
   if (byCode.size < MIN_EXPECTED_COURSES) {
@@ -474,6 +476,11 @@ async function main() {
   // --- Report ---
   const lines = [];
   lines.push(`Pages crawled: ${pagesVisited} (${pagesWithCourses} with courses)`);
+  if (droppedLinks > 0) {
+    lines.push(
+      `INCOMPLETE CRAWL: page cap of ${MAX_PAGES} hit, ${droppedLinks} discovered page(s) never fetched — raise MAX_PAGES and re-run`
+    );
+  }
   lines.push(`Unique bulletin courses: ${byCode.size}`);
   lines.push(`Updates: ${updates.length}`);
   lines.push(`Inserts (new courses): ${inserts.length}`);

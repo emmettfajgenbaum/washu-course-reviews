@@ -55,3 +55,4 @@ scripts/seed-reviews.sql
 
 # monthly sync output (full change plan; uploaded as a CI artifact)
 sync-courses-plan.json
+dedupe-courses-plan.json

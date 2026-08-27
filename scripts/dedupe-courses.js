@@ -7,12 +7,17 @@
 // listings, and sync-courses.js refuses to attach a bulletin_code to either
 // because the pair is ambiguous.
 //
-// WHAT COUNTS AS A DUPLICATE (all three, no exceptions):
+// WHAT COUNTS AS A DUPLICATE (all four, no exceptions):
 //   * same normalized name, and
 //   * at least one department in common, and
-//   * byte-identical normalized description, at least 40 chars long.
+//   * byte-identical normalized description, at least 40 chars long, and
+//   * at least one registrar code in common.
 // A shared name alone is NOT enough — "Special Topics" is a real, distinct
-// course in a dozen departments. The description is what makes it conclusive.
+// course in a dozen departments. Nor is a shared description: the nine
+// "Special Topics in Florence" offerings are nine different courses reading
+// from one boilerplate blurb. The registrar code is what separates them, and
+// a real duplicate always has it, because both rows came from the same course
+// in two terms' exports.
 //
 // MERGE: the survivor is the row with the most reviews (ties broken by richer
 // departments, then more registrar codes, then the more recent term, then the
@@ -24,10 +29,14 @@
 //
 // REFUSED, never guessed: a pair where the same user reviewed both rows (the
 // unique (course_id, user_id) constraint means one review would have to be
-// thrown away), or where the two rows carry different non-empty bulletin_codes
-// — that second guard is what keeps the nine distinct "Special Topics in
-// Florence" offerings, which share a boilerplate description, from collapsing
-// into one row.
+// thrown away), or where the two rows carry different non-empty bulletin_codes.
+//
+// That bulletin_code guard cannot be relied on for the Florence case, which is
+// why the registrar code is part of the duplicate test above: migration 005
+// clears every bulletin_code that appeared on more than one row, and same-named
+// rows are exactly the ones the old name-matching stamped with a shared code.
+// So by the time this script runs, both sides of such a pair hold '' and the
+// guard never fires.
 //
 // SAFETY:
 //   * DRY RUN BY DEFAULT. Pass --apply to write.
@@ -103,7 +112,17 @@ async function fetchAll(table, select) {
   return rows;
 }
 
-// Pure: group rows into duplicate pairs under the three-part rule above.
+// Two rows are the same course only if they share a registrar code. This is the
+// guard that separates a genuine re-import from two distinct offerings hiding
+// behind one name and one boilerplate description; bulletin_code cannot do it,
+// because migration 005 has already blanked it on exactly these rows. Two rows
+// with no codes at all share nothing, so they are not merged either.
+function sharesRegistrarCode(a, b) {
+  const bCodes = new Set(splitCodes(b.code).map(normalize));
+  return splitCodes(a.code).some((c) => bCodes.has(normalize(c)));
+}
+
+// Pure: group rows into duplicate pairs under the four-part rule above.
 function findDuplicatePairs(rows) {
   const byName = new Map();
   for (const r of rows) {
@@ -122,6 +141,7 @@ function findDuplicatePairs(rows) {
         if (da.length < MIN_DESC || da !== db) continue;
         const bDepts = (b.departments || []).map(normalize);
         if (!(a.departments || []).some((d) => bDepts.includes(normalize(d)))) continue;
+        if (!sharesRegistrarCode(a, b)) continue;
         pairs.push([a, b]);
       }
     }
@@ -301,7 +321,7 @@ async function main() {
   console.log("Done.");
 }
 
-module.exports = { normalize, isAllCaps, termKey, union, findDuplicatePairs, pickKeeper };
+module.exports = { normalize, isAllCaps, termKey, union, sharesRegistrarCode, findDuplicatePairs, pickKeeper };
 
 if (require.main === module) {
   main().catch((e) => { console.error(e); process.exit(1); });

@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import {
+  canonicalInstructorName,
+  surnamePart,
+  fullNamesWithSurname,
+} from "@/lib/instructor-names";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -23,8 +28,29 @@ export default async function InstructorPage({
   params: Promise<{ name: string }>;
 }) {
   const { name } = await params;
-  const instructorName = decodeURIComponent(name);
+  const requestedName = decodeURIComponent(name);
   const supabase = await createClient();
+
+  // One professor, one page. Course pages link instructors by the surname their
+  // reviews carry ("Jager"), while courses.instructors knows the full name
+  // ("Abigail Jager") — so the same person had two pages, and only the
+  // full-name one could match RateMyProfessors. Send the surname to the full
+  // name whenever the surname identifies exactly one instructor. Ambiguous
+  // surnames ("Johnson") keep their own page, since folding them would put one
+  // professor's reviews under another's name.
+  const surname = surnamePart(requestedName);
+  const { data: sameSurname } = await supabase
+    .from("instructor_names")
+    .select("name")
+    .ilike("name", `%${surname.replace(/[\\%_]/g, "\\$&")}`);
+  const canonicalName = canonicalInstructorName(
+    requestedName,
+    (sameSurname ?? []).map((r: { name: string }) => r.name)
+  );
+  if (canonicalName.toLowerCase() !== requestedName.toLowerCase()) {
+    redirect(`/instructor/${encodeURIComponent(canonicalName)}`);
+  }
+  const instructorName = requestedName;
 
   // Get all reviews for this instructor (exact match or last name match)
   const { data: exactReviews } = await supabase
@@ -71,32 +97,18 @@ export default async function InstructorPage({
   // exactly one instructor — checked against the instructor_names view
   // (migration 006). If that check cannot be made, no RMP row is shown.
   const nameParts = instructorName.trim().split(/\s+/);
-  const pageSurname = nameParts[nameParts.length - 1];
-  // ilike without wildcards = case-insensitive equality; escape the ilike
-  // metacharacters so a stray % or _ in a name can't widen the match.
-  const escape = (s: string) => s.replace(/[\\%_]/g, "\\$&");
-
-  let surnameIsUnambiguous = hasExactReviews;
-  if (!hasExactReviews && nameParts.length >= 2) {
-    const { data: sharing } = await supabase
-      .from("instructor_names")
-      .select("name")
-      .ilike("name", `%${escape(pageSurname)}`);
-    const distinct = new Set(
-      (sharing ?? [])
-        .map((r: { name: string }) => r.name.trim())
-        // ilike '%Jager' also catches "Bajager"; keep only real surname matches.
-        .filter(
-          (n) =>
-            (n.split(/\s+/).pop() ?? "").toLowerCase() === pageSurname.toLowerCase()
-        )
-        .map((n) => n.toLowerCase())
-    );
-    surnameIsUnambiguous = distinct.size === 1;
-  }
+  // Reuse the surname lookup already made for the canonical redirect above:
+  // exactly one full name carrying this surname means the pooled reviews below
+  // belong to one person, so a rating can sit above them.
+  const surnameIsUnambiguous =
+    hasExactReviews ||
+    fullNamesWithSurname(surname, (sameSurname ?? []).map((r) => r.name)).length === 1;
 
   let rmp: RmpInstructor | null = null;
   if (surnameIsUnambiguous && nameParts.length >= 2) {
+    // ilike without wildcards = case-insensitive equality; escape the ilike
+    // metacharacters so a stray % or _ in a name can't widen the match.
+    const escape = (s: string) => s.replace(/[\\%_]/g, "\\$&");
     const { data: rmpMatches } = await supabase
       .from("rmp_instructors")
       .select("*")

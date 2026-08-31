@@ -29,7 +29,7 @@ Add a domain in `auth-domains.ts` and all three follow. Never hardcode a domain 
 |---|---|
 | `app/page.tsx` | Search and browse |
 | `app/course/[id]` | One course, its reviews, its instructors |
-| `app/instructor/[name]` | One instructor across courses |
+| `app/instructor/[name]` | One instructor across courses — includes RateMyProfessors ratings when confident (see below) |
 | `app/auth/login` | Magic-link request |
 | `app/auth/domain-error` | The "you're not a WashU address" wall |
 | `app/api/keep-alive` | Cron target — see below |
@@ -56,10 +56,53 @@ Apply `supabase/migrations/*.sql` **in filename order** against a fresh database
 share the `003_` prefix (`003_add_feedback.sql` and `003_clerk_auth.sql`); they are independent and
 either order works, but everything numbered `004_` and later assumes both have run.
 
+## The monthly data sync
+
+`.github/workflows/sync-data.yml` runs on the 3rd of every month. Scheduled runs write;
+**a manual *Run workflow* is a preview unless the "Write changes" box is checked**, so a stray
+click can never touch production. Every run uploads `sync-courses-plan.json` as an artifact
+(kept 90 days) — the full change plan including the previous value of every field an update
+touches, which is the recovery record if a run ever writes garbage (the free Supabase tier has
+no point-in-time restore). The workflow also re-enables itself on every run so GitHub's 60-day
+inactivity rule can't silently kill the schedule on a quiet repo.
+
+It runs two scripts, both **dry-run by default** and only writing when passed `--apply`:
+
+- **`scripts/sync-courses.js`** crawls every program page under
+  `bulletin.wustl.edu/undergrad/` (discovered by following links — no hardcoded page list) and
+  reconciles the course blocks against the `courses` table. Accuracy over coverage: a scraped
+  course is matched by `bulletin_code` first, then by name **only** when exactly one existing
+  course shares the name and a department; anything ambiguous is skipped and listed in the run
+  summary instead of guessed at. Per-student registration shells ("Independent Study" and its
+  variants — see `EXCLUDED_GENERIC_TITLES` in the script) are excluded entirely, per Emmett.
+  New courses are inserted; nothing is ever deleted, and a unique
+  index on `bulletin_code` (migration 005) means a matching bug fails loudly instead of creating
+  a duplicate listing. It supersedes `scripts/update-descriptions.js`, whose name-only matching
+  polluted `bulletin_code` — migration 005 also cleans that up.
+- **`scripts/sync-rmp.js`** pulls every WashU professor's quality/difficulty ratings from
+  RateMyProfessors' GraphQL endpoint into `rmp_instructors`, upserted on RMP's professor id.
+  The instructor page shows the RMP row **only when the instructor's first and last name both
+  match exactly one RMP professor** (no fuzzy matching; two RMP professors sharing a name means
+  neither is shown), with a link to the RMP profile as the citation. Note:
+  RMP's terms of use restrict automated access; this is a deliberate, low-volume monthly batch.
+
+The workflow needs two repository secrets mirroring the Vercel production values
+(`docs/washu-prod-env-vars.md`, which documents the rotate-in-both-places rule):
+`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Without them every run fails at
+the env check. Both scripts also run locally against `.env.local`, dry-run unless `--apply`.
+
+**First-run order matters:** add the two secrets, apply migration 005, then immediately
+trigger the workflow manually — first as a preview, and once the summary looks right, again
+with "Write changes" checked. Migration 005 clears the `bulletin_code` values the old script
+had stamped onto multiple rows, and search matches on that column, so the gap between
+migrating and the first applied sync should be minutes, not until the 3rd of the month.
+Courses whose codes stay ambiguous land in the run summary's "Skipped" list for hand review;
+`bulletin_code_backup_005` (created by the migration) holds every cleared value.
+
 ## Scripts — one-time imports, not part of the app
 
-Nothing under `scripts/` runs in production. They were used to populate the database once and are kept
-so the import is repeatable.
+Everything below was used to populate the database once and is kept so the import is repeatable;
+only the two `sync-*.js` scripts above run on a schedule.
 
 **Four of them read `Course_Reviews.xlsx` from the repo root, and that file is not in the repo.**
 Emmett supplies it; it is gitignored on purpose so course data never lands in a public repo. Drop it at
@@ -72,7 +115,7 @@ the repo root before running any of these or they throw on `XLSX.readFile`:
 | `fix-reviews.js` | yes | Repairs rows from an earlier import |
 | `seed-reviews-api.js` | yes | Writes reviews through the API rather than direct SQL |
 | `dedupe-departments.js` | no | Removes duplicate values inside `courses.departments` |
-| `update-descriptions.js` | no | Refreshes course descriptions |
+| `update-descriptions.js` | no | Refreshed course descriptions — **superseded by `sync-courses.js`**, do not run |
 
 `scripts/seed-reviews.sql` is generated output (~2 MB) and is gitignored.
 

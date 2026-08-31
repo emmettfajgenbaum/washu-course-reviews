@@ -59,20 +59,44 @@ export default async function InstructorPage({
   const avgQuality = reviews.reduce((s, r) => s + r.quality, 0) / reviews.length;
   const avgDifficulty = reviews.reduce((s, r) => s + r.difficulty, 0) / reviews.length;
 
-  // RateMyProfessors match — only shown when we are confident: the page's
-  // first AND last name must both match exactly ONE RMP professor
-  // (case-insensitive; two RMP professors sharing the name means we can't tell
-  // which one this is, so neither is shown), AND the reviews shown actually
-  // belong to that exact name. When the page fell back to bare last-name
-  // review matching, the reviews may be someone else's, so no RMP box —
-  // anything less would put one person's ratings above another person's
-  // reviews.
-  let rmp: RmpInstructor | null = null;
+  // RateMyProfessors match — only shown when the page's first AND last name
+  // both match exactly ONE RMP professor (case-insensitive; two RMP professors
+  // sharing a name means we cannot tell which this is, so neither is shown).
+  //
+  // The reviews themselves carry only a SURNAME ("Jager"), while this page is
+  // reached by the full name from courses.instructors ("Abigail Jager"), so
+  // nearly every page finds its reviews through the last-name fallback. That
+  // fallback pools everyone sharing the surname, so before putting one
+  // professor's ratings above those reviews we require the surname to identify
+  // exactly one instructor — checked against the instructor_names view
+  // (migration 006). If that check cannot be made, no RMP row is shown.
   const nameParts = instructorName.trim().split(/\s+/);
-  if (hasExactReviews && nameParts.length >= 2) {
-    // ilike without wildcards = case-insensitive equality; escape the ilike
-    // metacharacters so a stray % or _ in a name can't widen the match.
-    const escape = (s: string) => s.replace(/[\\%_]/g, "\\$&");
+  const pageSurname = nameParts[nameParts.length - 1];
+  // ilike without wildcards = case-insensitive equality; escape the ilike
+  // metacharacters so a stray % or _ in a name can't widen the match.
+  const escape = (s: string) => s.replace(/[\\%_]/g, "\\$&");
+
+  let surnameIsUnambiguous = hasExactReviews;
+  if (!hasExactReviews && nameParts.length >= 2) {
+    const { data: sharing } = await supabase
+      .from("instructor_names")
+      .select("name")
+      .ilike("name", `%${escape(pageSurname)}`);
+    const distinct = new Set(
+      (sharing ?? [])
+        .map((r: { name: string }) => r.name.trim())
+        // ilike '%Jager' also catches "Bajager"; keep only real surname matches.
+        .filter(
+          (n) =>
+            (n.split(/\s+/).pop() ?? "").toLowerCase() === pageSurname.toLowerCase()
+        )
+        .map((n) => n.toLowerCase())
+    );
+    surnameIsUnambiguous = distinct.size === 1;
+  }
+
+  let rmp: RmpInstructor | null = null;
+  if (surnameIsUnambiguous && nameParts.length >= 2) {
     const { data: rmpMatches } = await supabase
       .from("rmp_instructors")
       .select("*")

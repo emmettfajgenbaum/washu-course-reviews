@@ -48,3 +48,16 @@ export interface RmpInstructor {
   department: string;
   synced_at: string;
 }
+
+/** A professor as the search list shows them, after surnames have been folded
+ *  into full names. Averages are review-count weighted across every stored
+ *  spelling that resolved to this person. */
+export interface InstructorSummary {
+  name: string;
+  review_count: number;
+  course_count: number;
+  avg_quality: number | null;
+  avg_difficulty: number | null;
+  /** The raw reviews.instructor values that folded into this entry. */
+  aliases: string[];
+}

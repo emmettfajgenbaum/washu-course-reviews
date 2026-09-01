@@ -3,7 +3,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import {
   canonicalInstructorName,
-  surnamePart,
+  lookupSurname,
   fullNamesWithSurname,
 } from "@/lib/instructor-names";
 import Header from "@/components/Header";
@@ -38,7 +38,10 @@ export default async function InstructorPage({
   // name whenever the surname identifies exactly one instructor. Ambiguous
   // surnames ("Johnson") keep their own page, since folding them would put one
   // professor's reviews under another's name.
-  const surname = surnamePart(requestedName);
+  // lookupSurname, not surnamePart: this page is usually reached by a FULL name
+  // ("Abigail Jager"), whose surname is its last word. surnamePart would return
+  // the whole string and the lookup would find nobody.
+  const surname = lookupSurname(requestedName);
   const { data: sameSurname } = await supabase
     .from("instructor_names")
     .select("name")

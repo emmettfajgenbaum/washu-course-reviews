@@ -30,6 +30,27 @@ export function surnamePart(name: string): string {
 }
 
 /**
+ * The surname to look a person up by, for a name in EITHER shape.
+ *
+ *   "Abigail Jager"     -> "Jager"        (full name: the last word)
+ *   "Judi McLean Parks" -> "Parks"
+ *   "Jager"             -> "Jager"        (review name: itself)
+ *   "Petersen, D."      -> "Petersen"     ("Last, F." form)
+ *
+ * Distinct from `surnamePart`, which treats an un-punctuated string as being
+ * entirely a surname — right for a review name, wrong for a full name, where
+ * it would ask how many instructors are surnamed "Abigail Jager" and find none.
+ */
+export function lookupSurname(name: string): string {
+  const n = tidy(name);
+  if (!n) return n;
+  const comma = n.indexOf(",");
+  if (comma !== -1) return tidy(n.slice(0, comma));
+  const parts = n.split(" ");
+  return parts[parts.length - 1];
+}
+
+/**
  * The first initial in a "Last, F." name, lowercased; null when there isn't one.
  * This is extra evidence: "Petersen, D." should only fold into a Petersen whose
  * first name actually starts with D.

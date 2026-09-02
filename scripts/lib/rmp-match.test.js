@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   parseClassString,
   buildCourseIndex,
+  buildInstructorDirectory,
   professorTeaches,
   matchCourse,
   normalizeComment,
@@ -45,19 +46,19 @@ for (const [input, expected] of PARSE_CASES) {
 const keysFor = (index, id) =>
   [...index.entries()].filter(([, ids]) => ids.has(id)).map(([k]) => k).sort();
 
-test("buildCourseIndex indexes old code and new bulletin code, with and without subject", () => {
+test("buildCourseIndex indexes old code and new bulletin code, exact, loose, and number-only", () => {
   const index = buildCourseIndex([{ id: 1, code: "L24 Math 233", bulletin_code: "MATH 2130" }]);
-  assert.deepEqual(keysFor(index, 1), ["#2130", "#233", "MATH 2130", "MATH 233"]);
+  assert.deepEqual(keysFor(index, 1), ["#2130", "#233", "MATH 2130", "MATH 2130|", "MATH 233", "MATH 233|"]);
 });
 
-test("buildCourseIndex indexes every cross-listing and keeps suffixed and unsuffixed keys", () => {
+test("buildCourseIndex indexes every cross-listing; the suffix is part of the exact key", () => {
   const index = buildCourseIndex([{ id: 7, code: "L90 AFAS 3255, L98 AMCS 325A", bulletin_code: "" }]);
-  assert.deepEqual(keysFor(index, 7), ["#325", "#3255", "AFAS 3255", "AMCS 325", "AMCS 325 A"]);
+  assert.deepEqual(keysFor(index, 7), ["#325", "#3255", "AFAS 3255", "AFAS 3255|", "AMCS 325", "AMCS 325|A"]);
 });
 
 test("buildCourseIndex collapses multi-word subjects and skips unparseable parts", () => {
   const index = buildCourseIndex([{ id: 3, code: "L16 Comp Lit 3123, junk", bulletin_code: "COMPLITTHT 3121" }]);
-  assert.deepEqual(keysFor(index, 3), ["#3121", "#3123", "COMPLIT 3123", "COMPLITTHT 3121"]);
+  assert.deepEqual(keysFor(index, 3), ["#3121", "#3123", "COMPLIT 3123", "COMPLIT 3123|", "COMPLITTHT 3121", "COMPLITTHT 3121|"]);
 });
 
 // ---------- professorTeaches / matchCourse ----------
@@ -66,6 +67,8 @@ const COURSES = [
   { id: 10, code: "L24 Math 100", bulletin_code: "MATH 1010", instructors: ["Jane Roe"] },
   { id: 11, code: "B53 Math 100", bulletin_code: "", instructors: ["Kathy Hafer"] },
   { id: 20, code: "E81 CSE 131", bulletin_code: "CSE 1310", instructors: ["Douglas Shook"] },
+  { id: 21, code: "E81 CSE 247", bulletin_code: "CSE 2407", instructors: ["Cynthia Ma"] },
+  { id: 22, code: "E81 CSE 247R", bulletin_code: "CSE 2497", instructors: ["Cynthia Ma"] },
   { id: 30, code: "L41 BIOL 2960", bulletin_code: "BIOL 2960", instructors: ["Kathy Hafer"] },
   { id: 31, code: "B99 XYZ 2960", bulletin_code: "", instructors: [] },
 ];
@@ -82,8 +85,9 @@ test("professorTeaches matches the last token of a listed instructor, case-insen
 });
 
 test("professorTeaches also counts an existing review's instructor", () => {
-  assert.equal(professorTeaches(COURSES[4], "Chen", REVIEWS_BY_COURSE), true);
-  assert.equal(professorTeaches(COURSES[4], "Chen", new Map()), false);
+  const course31 = COURSES.find((c) => c.id === 31);
+  assert.equal(professorTeaches(course31, "Chen", REVIEWS_BY_COURSE), true);
+  assert.equal(professorTeaches(course31, "Chen", new Map()), false);
 });
 
 test("matchCourse: a single course under subject+number matches by code", () => {
@@ -127,7 +131,14 @@ test("matchCourse: unknown subject falls back to the number, still gated by the 
   const r = matchCourse(ctx(), parseClassString("CWP2960"), "Hafer");
   assert.deepEqual(r, { courseId: 30, rule: "number+prof", profOnCourse: true });
   const r2 = matchCourse(ctx(), parseClassString("CWP100"), "Nobody");
-  assert.deepEqual(r2, { skipped: "ambiguous: CWP 100 (2 courses, professor on none)" });
+  assert.deepEqual(r2, { skipped: "no course for CWP 100 (2 courses numbered 100, professor on none)" });
+  const r3 = matchCourse(ctx(), parseClassString("CHEM2960"), "Nobody");
+  assert.deepEqual(r3, { skipped: "no course for CHEM 2960 (2 courses numbered 2960, professor on none)" });
+});
+
+test("matchCourse: an unsuffixed class string prefers the unsuffixed course over its R/S variant", () => {
+  assert.deepEqual(matchCourse(ctx(), parseClassString("CSE247"), "Ma"), { courseId: 21, rule: "code", profOnCourse: true });
+  assert.deepEqual(matchCourse(ctx(), parseClassString("CSE247R"), "Ma"), { courseId: 22, rule: "code", profOnCourse: true });
 });
 
 test("matchCourse: nothing under the number at all", () => {
@@ -186,6 +197,38 @@ test("resolveInstructorName falls back when there are zero or several candidates
   assert.equal(resolveInstructorName({ instructors: ["A Smith", "B Smith"] }, "Smith", "C Smith"), "C Smith");
   assert.equal(resolveInstructorName({ instructors: [] }, "Smith", "C Smith"), "C Smith");
   assert.equal(resolveInstructorName(undefined, "Smith", null), null);
+});
+
+const DIRECTORY = buildInstructorDirectory([
+  { instructors: ["Steve Cole", "Rong Chen", "Kristin Van Engen"] },
+  { instructors: ["Jiayi Chen", "Steve Cole"] },
+]);
+
+test("buildInstructorDirectory keys every name by its last one, two, and three tokens", () => {
+  assert.deepEqual([...DIRECTORY.get("cole")], ["Steve Cole"]);
+  assert.deepEqual([...DIRECTORY.get("chen")].sort(), ["Jiayi Chen", "Rong Chen"]);
+  assert.deepEqual([...DIRECTORY.get("vanengen")], ["Kristin Van Engen"]);
+  assert.deepEqual([...DIRECTORY.get("engen")], ["Kristin Van Engen"]);
+});
+
+test("resolveInstructorName: the catalog's unique spelling wins over RMP's, gated by first initial", () => {
+  const opts = { directory: DIRECTORY, firstName: "Stephen" };
+  assert.equal(resolveInstructorName({ instructors: [] }, "Cole", "Stephen Cole", opts), "Steve Cole");
+  assert.equal(resolveInstructorName({ instructors: [] }, "Cole", "Nate Cole", { directory: DIRECTORY, firstName: "Nate" }), "Nate Cole");
+  assert.equal(resolveInstructorName({ instructors: [] }, "Van Engen", "K Van Engen", { directory: DIRECTORY, firstName: "Kristin" }), "Kristin Van Engen");
+});
+
+test("resolveInstructorName: several catalog names sharing the last name -> fallback, even with an initial", () => {
+  assert.equal(resolveInstructorName({ instructors: [] }, "Chen", "J Chen", { directory: DIRECTORY, firstName: "Jane" }), "J Chen");
+  assert.equal(resolveInstructorName({ instructors: [] }, "Chen", null, { directory: DIRECTORY }), null);
+});
+
+test("resolveInstructorName: without a first name, a catalog-unique last name still resolves", () => {
+  assert.equal(resolveInstructorName({ instructors: [] }, "Cole", null, { directory: DIRECTORY }), "Steve Cole");
+});
+
+test("resolveInstructorName: the course's own listing beats the directory", () => {
+  assert.equal(resolveInstructorName({ instructors: ["Stephen Cole"] }, "Cole", "x", { directory: DIRECTORY, firstName: "Stephen" }), "Stephen Cole");
 });
 
 // ---------- dates ----------

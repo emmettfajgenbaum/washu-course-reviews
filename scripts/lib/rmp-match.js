@@ -58,11 +58,13 @@ function courseCodes(course) {
   return out;
 }
 
-const keySubjectNumberSuffix = (p) => `${p.subject} ${p.number} ${p.suffix}`;
-const keySubjectNumber = (p) => `${p.subject} ${p.number}`;
+// Three keys per code: exact ("CSE 247|" vs "CSE 247|R" — the suffix, or its
+// absence, is part of the identity), loose ("CSE 247", either), and number only.
+const keyExact = (p) => `${p.subject} ${p.number}|${p.suffix}`;
+const keyLoose = (p) => `${p.subject} ${p.number}`;
 const keyNumber = (p) => `#${p.number}`;
 
-// Map<key, Set<courseId>> under "SUBJ NUM SUF" (when suffixed), "SUBJ NUM", and "#NUM".
+// Map<key, Set<courseId>> under all three keys for every code a course carries.
 function buildCourseIndex(courses) {
   const index = new Map();
   const add = (key, id) => {
@@ -71,8 +73,8 @@ function buildCourseIndex(courses) {
   };
   for (const course of courses) {
     for (const p of courseCodes(course)) {
-      if (p.suffix) add(keySubjectNumberSuffix(p), course.id);
-      add(keySubjectNumber(p), course.id);
+      add(keyExact(p), course.id);
+      add(keyLoose(p), course.id);
       add(keyNumber(p), course.id);
     }
   }
@@ -109,20 +111,24 @@ function professorTeaches(course, lastName, reviewsByCourse) {
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 // Resolve a parsed class string to one course, or explain why not.
-//   1. Exactly one course under subject+number(+suffix)        -> rule "code"
+//   1. Exactly one course under subject+number, the suffix (or its absence)
+//      matching exactly, else loosely                           -> rule "code"
 //   2. Several, and the professor is on exactly one of them     -> rule "code+prof"
 //   3. No subject match: courses under the number alone, and the
 //      professor is on exactly one of them                      -> rule "number+prof"
 //   4. Anything else                                            -> { skipped: reason }
+// Skip reasons start with "unparseable", "ambiguous", or "no course" so the
+// caller can tally them.
 function matchCourse({ index, coursesById, reviewsByCourse }, parsed, lastName) {
   if (!parsed) return { skipped: "unparseable class" };
   const label = `${parsed.subject} ${parsed.number}`.trim();
   const teaches = (id) => professorTeaches(coursesById.get(id), lastName, reviewsByCourse);
+  const onNone = (taught) => (taught.length === 0 ? "none" : taught.length);
 
   let ids = null;
   if (parsed.subject) {
-    if (parsed.suffix) ids = index.get(keySubjectNumberSuffix(parsed));
-    if (!ids || ids.size === 0) ids = index.get(keySubjectNumber(parsed));
+    ids = index.get(keyExact(parsed));
+    if (!ids || ids.size === 0) ids = index.get(keyLoose(parsed));
   }
   if (ids && ids.size > 0) {
     if (ids.size === 1) {
@@ -131,18 +137,19 @@ function matchCourse({ index, coursesById, reviewsByCourse }, parsed, lastName) 
     }
     const taught = [...ids].filter(teaches);
     if (taught.length === 1) return { courseId: taught[0], rule: "code+prof", profOnCourse: true };
-    return {
-      skipped: `ambiguous: ${label} (${plural(ids.size, "course")}, professor on ${taught.length === 0 ? "none" : taught.length})`,
-    };
+    return { skipped: `ambiguous: ${label} (${plural(ids.size, "course")}, professor on ${onNone(taught)})` };
   }
 
   const byNumber = index.get(keyNumber(parsed));
   if (!byNumber || byNumber.size === 0) return { skipped: `no course for ${label}` };
   const taught = [...byNumber].filter(teaches);
   if (taught.length === 1) return { courseId: taught[0], rule: "number+prof", profOnCourse: true };
-  return {
-    skipped: `ambiguous: ${label} (${plural(byNumber.size, "course")}, professor on ${taught.length === 0 ? "none" : taught.length})`,
-  };
+  if (parsed.subject) {
+    return {
+      skipped: `no course for ${label} (${plural(byNumber.size, "course")} numbered ${parsed.number}, professor on ${onNone(taught)})`,
+    };
+  }
+  return { skipped: `ambiguous: ${label} (${plural(byNumber.size, "course")}, professor on ${onNone(taught)})` };
 }
 
 // ---------- comments ----------
@@ -178,11 +185,43 @@ function dedupeKeys(comment, lastName, isoDay) {
 
 // ---------- instructor names ----------
 
-// The course's own spelling of this professor's name when exactly one listed
-// instructor shares the last name; otherwise `fallback`.
-function resolveInstructorName(course, lastName, fallback) {
-  const hits = ((course && course.instructors) || []).filter((name) => lastNameMatches(name, lastName));
-  return hits.length === 1 ? hits[0] : fallback;
+// Every distinct instructor name in the catalog, keyed by the squashed last
+// one, two, and three tokens ("engen", "vanengen", "kristinvanengen"), so a
+// last name can be looked up however many words it has.
+function buildInstructorDirectory(courses) {
+  const directory = new Map();
+  for (const course of courses) {
+    for (const raw of course.instructors || []) {
+      const name = String(raw || "").trim();
+      if (!name) continue;
+      const tokens = name.split(/\s+/);
+      for (let k = 1; k <= Math.min(3, tokens.length); k++) {
+        const key = squash(tokens.slice(-k).join(""));
+        if (!directory.has(key)) directory.set(key, new Set());
+        directory.get(key).add(name);
+      }
+    }
+  }
+  return directory;
+}
+
+// The catalog's spelling of this professor's name, so one person is one string
+// across every review:
+//   1. exactly one instructor listed on this course shares the last name;
+//   2. else exactly one name in the whole catalog shares it, and when
+//      `firstName` is known its initial agrees ("Steve Cole" for RMP's
+//      "Stephen Cole"; a second Chen anywhere in the catalog, or a first
+//      initial that differs, means no match);
+//   3. else `fallback`.
+function resolveInstructorName(course, lastName, fallback, { directory, firstName } = {}) {
+  const onCourse = ((course && course.instructors) || []).filter((name) => lastNameMatches(name, lastName));
+  if (onCourse.length === 1) return onCourse[0];
+  if (directory) {
+    const names = [...(directory.get(squash(lastName)) || [])];
+    const initial = squash(firstName).charAt(0);
+    if (names.length === 1 && (!initial || squash(names[0]).charAt(0) === initial)) return names[0];
+  }
+  return fallback;
 }
 
 // ---------- dates ----------
@@ -206,6 +245,7 @@ module.exports = {
   decodeEntities,
   normalizeComment,
   dedupeKeys,
+  buildInstructorDirectory,
   resolveInstructorName,
   parseRmpDate,
 };

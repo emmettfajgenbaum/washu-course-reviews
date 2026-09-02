@@ -47,17 +47,24 @@ async function fetchAll(supabase, table, columns, orderBy = "id") {
   return rows;
 }
 
-// Migration 006 added reviews.rmp_rating_id. Without it neither the import nor
-// the instructor-name fix can run safely, so fail loudly before any write.
-async function assertMigration006(supabase) {
+// Migration 006 added reviews.rmp_rating_id (and the instructor backup table).
+// A dry run can work without it — useful for previewing on a machine that has
+// not applied it yet — but no write may happen until it is in place.
+async function hasMigration006(supabase) {
   const { error } = await supabase.from("reviews").select("rmp_rating_id").limit(1);
-  if (error) {
-    console.error(
-      "Migration 006 has not been applied. Paste supabase/migrations/006_rmp_reviews.sql into the " +
-        "Supabase SQL editor and run it, then re-run this script.\n  (" + error.message + ")"
-    );
+  return !error;
+}
+
+const MIGRATION_006_MESSAGE =
+  "Migration 006 has not been applied. Paste supabase/migrations/006_rmp_reviews.sql into the " +
+  "Supabase SQL editor and run it, then re-run this script.";
+
+// Exit 1 with the instruction unless migration 006 is present. Call before any write.
+async function assertMigration006(supabase) {
+  if (!(await hasMigration006(supabase))) {
+    console.error(MIGRATION_006_MESSAGE);
     process.exit(1);
   }
 }
 
-module.exports = { loadEnv, createSupabase, fetchAll, assertMigration006 };
+module.exports = { loadEnv, createSupabase, fetchAll, hasMigration006, assertMigration006, MIGRATION_006_MESSAGE };

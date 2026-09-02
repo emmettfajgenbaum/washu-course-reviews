@@ -1,5 +1,5 @@
-# Monthly data refresh: WashU undergrad catalog from bulletin.wustl.edu and
-# professor ratings from RateMyProfessors.
+# Monthly data refresh: WashU undergrad catalog from bulletin.wustl.edu, and
+# new RateMyProfessors ratings imported as reviews.
 #
 # Runs on GitHub Actions rather than Vercel Cron because the rate-limited crawl
 # takes minutes (past Hobby function limits). Requires two repository secrets
@@ -9,11 +9,12 @@
 #
 # Scheduled runs apply. Manual runs are a DRY-RUN PREVIEW unless the
 # "Write changes" box is checked — a stray click can never write to production.
-# Every run uploads sync-courses-plan.json (the full change plan, including
-# the previous value of every field an update touches) as an artifact; that
-# artifact is the recovery record if a run ever writes garbage.
+# Every run uploads both change plans as artifacts — sync-courses-plan.json
+# (including the previous value of every field an update touches) and
+# sync-rmp-reviews-plan.json (every inserted row and every skip with its
+# reason); they are the recovery record if a run ever writes garbage.
 
-name: Sync course and RMP data
+name: Sync courses and reviews
 
 on:
   schedule:
@@ -32,7 +33,10 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # ~5 min of bulletin crawl plus ~15 min of RMP (one request per rated
+    # professor); the rest is headroom for a slow RMP, since a timeout skips
+    # the artifact uploads below.
+    timeout-minutes: 50
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -55,11 +59,12 @@ jobs:
         run: node scripts/sync-courses.js $APPLY_FLAG
 
       # RMP is an independent data source — a bulletin-side failure must not
-      # freeze professor ratings too, so this step runs even if the previous
-      # one failed.
-      - name: Sync professor ratings from RateMyProfessors
+      # freeze the review import too, so this step runs even if the previous
+      # one failed. Dry-run by default; --max-insert keeps a matching bug from
+      # mass-inserting (see the script header).
+      - name: Import new RateMyProfessors ratings as reviews
         if: ${{ !cancelled() }}
-        run: node scripts/sync-rmp.js $APPLY_FLAG
+        run: node scripts/sync-rmp-reviews.js $APPLY_FLAG
 
       - name: Upload the course change plan (recovery record)
         if: ${{ !cancelled() }}
@@ -67,6 +72,15 @@ jobs:
         with:
           name: sync-courses-plan
           path: sync-courses-plan.json
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Upload the review import plan (recovery record)
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-rmp-reviews-plan
+          path: sync-rmp-reviews-plan*.json
           if-no-files-found: ignore
           retention-days: 90
 

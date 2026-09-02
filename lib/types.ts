@@ -28,25 +28,18 @@ export interface Review {
   created_at: string;
 }
 
+// The columns the app reads from `reviews`. The table also carries `source`
+// ('site' | 'xlsx' | 'rmp') and `rmp_rating_id`, which only the maintenance
+// scripts use; selecting by name keeps them out of every page payload.
+export const REVIEW_COLUMNS =
+  "id, course_id, user_id, quality, difficulty, instructor, hours_per_week, comment, created_at";
+
 export interface ReviewFlag {
   id: number;
   review_id: number;
   user_id: string;
   reason: string;
   created_at: string;
-}
-
-export interface RmpInstructor {
-  id: number;
-  legacy_id: number;
-  first_name: string;
-  last_name: string;
-  quality: number | null;
-  difficulty: number | null;
-  would_take_again: number | null;
-  num_ratings: number;
-  department: string;
-  synced_at: string;
 }
 
 /** A professor as the search list shows them, after surnames have been folded

@@ -4,8 +4,9 @@
 //   reviews.instructor    surnames     "Jager", "McLean Parks", "Petersen, D."
 //
 // Left alone that produces two pages for the same professor — the surname one
-// (which is what a course page links to) and the full-name one — and only the
-// full-name page can match RateMyProfessors, which needs a first name.
+// (which is what a course page links to) and the full-name one. Most review
+// rows now carry the full name (scripts/fix-review-instructor-names.js); these
+// helpers cover the ones that could not be resolved.
 //
 // These helpers pick the canonical full name for a surname, but ONLY when the
 // surname identifies exactly one person. "Johnson" stays "Johnson", because
@@ -95,7 +96,7 @@ export function canonicalInstructorName(
  * requires the first name to start with it ("Petersen, D." -> Dana Petersen).
  *
  * A result of exactly one means the surname identifies a single person — which
- * is what both the canonical redirect and the RateMyProfessors row require.
+ * is what the canonical redirect requires.
  */
 export function fullNamesWithSurname(
   surname: string,

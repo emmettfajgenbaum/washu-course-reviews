@@ -13,6 +13,12 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // The maintenance scripts are plain Node CommonJS, run with `node scripts/...`,
+  // never bundled: require() is the right import there.
+  {
+    files: ["scripts/**/*.js"],
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
 ]);
 
 export default eslintConfig;

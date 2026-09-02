@@ -56,3 +56,5 @@ scripts/seed-reviews.sql
 # monthly sync output (full change plan; uploaded as a CI artifact)
 sync-courses-plan.json
 dedupe-courses-plan.json
+sync-rmp-reviews-plan*.json
+fix-review-instructor-names-plan.json

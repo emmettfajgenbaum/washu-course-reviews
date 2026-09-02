@@ -3,7 +3,7 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { isAllowedEmail } from "@/lib/auth-domains";
-import type { Review } from "@/lib/types";
+import { REVIEW_COLUMNS, type Review } from "@/lib/types";
 
 export type SubmitReviewInput = {
   courseId: number;
@@ -46,7 +46,7 @@ export async function submitReview(input: SubmitReviewInput): Promise<SubmitRevi
       hours_per_week: input.hours_per_week,
       comment: input.comment,
     })
-    .select()
+    .select(REVIEW_COLUMNS)
     .single();
 
   if (error) {

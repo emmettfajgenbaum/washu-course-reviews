@@ -26,11 +26,13 @@ export interface Review {
   hours_per_week: string;
   comment: string;
   created_at: string;
-  // 'site' for reviews written here, 'xlsx' for the original import, 'rmp' for
-  // ratings scripts/sync-rmp-reviews.js imported. Never shown to users.
-  source: string;
-  rmp_rating_id: number | null;
 }
+
+// The columns the app reads from `reviews`. The table also carries `source`
+// ('site' | 'xlsx' | 'rmp') and `rmp_rating_id`, which only the maintenance
+// scripts use; selecting by name keeps them out of every page payload.
+export const REVIEW_COLUMNS =
+  "id, course_id, user_id, quality, difficulty, instructor, hours_per_week, comment, created_at";
 
 export interface ReviewFlag {
   id: number;

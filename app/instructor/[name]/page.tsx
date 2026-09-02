@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { REVIEW_COLUMNS } from "@/lib/types";
 
 function ratingColor(value: number, invert = false) {
   if (invert) {
@@ -28,7 +29,7 @@ export default async function InstructorPage({
   // Get all reviews for this instructor (exact match or last name match)
   const { data: exactReviews } = await supabase
     .from("reviews")
-    .select("*")
+    .select(REVIEW_COLUMNS)
     .eq("instructor", instructorName)
     .order("created_at", { ascending: false });
 
@@ -36,7 +37,7 @@ export default async function InstructorPage({
   const lastName = instructorName.split(" ").pop() || instructorName;
   const { data: lastNameReviews } = await supabase
     .from("reviews")
-    .select("*")
+    .select(REVIEW_COLUMNS)
     .eq("instructor", lastName)
     .order("created_at", { ascending: false });
 

@@ -5,6 +5,7 @@ import CourseDetail from "@/components/CourseDetail";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { REVIEW_COLUMNS } from "@/lib/types";
 
 export default async function CoursePage({
   params,
@@ -24,7 +25,7 @@ export default async function CoursePage({
 
   const { data: reviews } = await supabase
     .from("reviews")
-    .select("*")
+    .select(REVIEW_COLUMNS)
     .eq("course_id", course.id)
     .order("created_at", { ascending: false });
 

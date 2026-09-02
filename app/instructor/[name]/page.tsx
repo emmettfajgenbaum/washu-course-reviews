@@ -1,11 +1,7 @@
 import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
-import {
-  canonicalInstructorName,
-  lookupSurname,
-  fullNamesWithSurname,
-} from "@/lib/instructor-names";
+import { canonicalInstructorName, lookupSurname } from "@/lib/instructor-names";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";

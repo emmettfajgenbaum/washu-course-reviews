@@ -1,4 +1,4 @@
--- 006: reviews carry their source and their RateMyProfessors rating id;
+-- 008: reviews carry their source and their RateMyProfessors rating id;
 --      the separate RMP ratings table goes away.
 --
 -- Every review on the site came from RateMyProfessors: the xlsx import was a
@@ -29,7 +29,10 @@
 --   * The only drop is rmp_instructors, which nothing reads once the instructor
 --     page change in the same branch is deployed.
 --
--- Applied by hand in the Supabase SQL editor. Both scripts above check for the
+-- Applied by hand in the Supabase SQL editor on 2026-09-02, while it was still
+-- numbered 006; a parallel branch took 006 and 007 for the two instructor
+-- views, so the file is 008 and the backup table keeps the _006 suffix it was
+-- created with. Both scripts above check for the
 -- rmp_rating_id column and refuse to run until this has been applied.
 
 alter table reviews add column source text not null default 'site';

@@ -97,7 +97,7 @@ It runs two scripts, both **dry-run by default** and only writing when passed `-
   run summary by class string. Imported reviews carry the professor's full name in the course's own
   spelling when it lists them. `--max-insert` (default 2,000; new ratings run about 300 a month)
   stops a matching bug from mass-inserting; writes are upserts on `rmp_rating_id` with duplicates
-  ignored, so a re-run never doubles a rating. Requires migration 006; a dry run works without it,
+  ignored, so a re-run never doubles a rating. Requires migration 008; a dry run works without it,
   `--apply` refuses. Note: RMP's terms of use restrict automated access; this is a deliberate,
   low-volume monthly batch, roughly one request per rated professor.
 
@@ -114,7 +114,7 @@ migrating and the first applied sync should be minutes, not until the 3rd of the
 Courses whose codes stay ambiguous land in the run summary's "Skipped" list for hand review;
 `bulletin_code_backup_005` (created by the migration) holds every cleared value.
 
-**Migration 006 and the first review import, in order:** apply `006_rmp_reviews.sql` in the SQL
+**Migration 008 and the first review import, in order:** apply `008_rmp_reviews.sql` in the SQL
 editor (it adds `reviews.source` and `reviews.rmp_rating_id`, snapshots every instructor value into
 `reviews_instructor_backup_006`, and drops the old `rmp_instructors` table); run
 `scripts/fix-review-instructor-names.js`, preview then `--apply`, which rewrites the legacy

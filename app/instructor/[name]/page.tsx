@@ -1,6 +1,11 @@
 import { createClient } from "@/lib/supabase-server";
 import { currentUser } from "@clerk/nextjs/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import {
+  canonicalInstructorName,
+  lookupSurname,
+  fullNamesWithSurname,
+} from "@/lib/instructor-names";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
@@ -23,8 +28,32 @@ export default async function InstructorPage({
   params: Promise<{ name: string }>;
 }) {
   const { name } = await params;
-  const instructorName = decodeURIComponent(name);
+  const requestedName = decodeURIComponent(name);
   const supabase = await createClient();
+
+  // One professor, one page. Course pages link instructors by the surname their
+  // reviews carry ("Jager"), while courses.instructors knows the full name
+  // ("Abigail Jager") — so the same person had two pages, and only the
+  // full-name one could match RateMyProfessors. Send the surname to the full
+  // name whenever the surname identifies exactly one instructor. Ambiguous
+  // surnames ("Johnson") keep their own page, since folding them would put one
+  // professor's reviews under another's name.
+  // lookupSurname, not surnamePart: this page is usually reached by a FULL name
+  // ("Abigail Jager"), whose surname is its last word. surnamePart would return
+  // the whole string and the lookup would find nobody.
+  const surname = lookupSurname(requestedName);
+  const { data: sameSurname } = await supabase
+    .from("instructor_names")
+    .select("name")
+    .ilike("name", `%${surname.replace(/[\\%_]/g, "\\$&")}`);
+  const canonicalName = canonicalInstructorName(
+    requestedName,
+    (sameSurname ?? []).map((r: { name: string }) => r.name)
+  );
+  if (canonicalName.toLowerCase() !== requestedName.toLowerCase()) {
+    redirect(`/instructor/${encodeURIComponent(canonicalName)}`);
+  }
+  const instructorName = requestedName;
 
   // Get all reviews for this instructor (exact match or last name match)
   const { data: exactReviews } = await supabase

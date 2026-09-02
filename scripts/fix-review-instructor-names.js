@@ -19,7 +19,7 @@
 //   * DRY RUN BY DEFAULT. It only previews changes unless you pass --apply.
 //   * Only reviews.instructor is written, addressed row by row by id.
 //   * Every previous value is in fix-review-instructor-names-plan.json
-//     (gitignored) and in reviews_instructor_backup_006 (migration 006):
+//     (gitignored) and in reviews_instructor_backup_006 (migration 008):
 //       update reviews r set instructor = b.instructor
 //       from reviews_instructor_backup_006 b where b.id = r.id;
 //
@@ -27,11 +27,11 @@
 //   node scripts/fix-review-instructor-names.js            # preview only
 //   node scripts/fix-review-instructor-names.js --apply    # write
 //
-// Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY. Writing requires migration 006.
+// Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY. Writing requires migration 008.
 
 const fs = require("fs");
 const path = require("path");
-const { loadEnv, createSupabase, fetchAll, assertMigration006 } = require("./lib/env.js");
+const { loadEnv, createSupabase, fetchAll, assertMigration008 } = require("./lib/env.js");
 const { buildInstructorDirectory, resolveLegacyName } = require("./lib/rmp-match.js");
 
 loadEnv();
@@ -42,9 +42,9 @@ const CONCURRENCY = 50;
 
 async function main() {
   const supabase = createSupabase();
-  // The backup table this script relies on is created by migration 006, so
+  // The backup table this script relies on is created by migration 008, so
   // writes are refused until it is applied. Previewing is fine without it.
-  if (APPLY) await assertMigration006(supabase);
+  if (APPLY) await assertMigration008(supabase);
 
   console.log(`Project: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
   console.log(APPLY ? "MODE: APPLY (will write changes)\n" : "MODE: DRY RUN (no writes)\n");

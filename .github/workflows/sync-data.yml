@@ -44,9 +44,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node 22+ required: @supabase/supabase-js constructs a RealtimeClient on
+      # createClient(), which needs a native global WebSocket. Node 20 has none,
+      # so both scripts died at startup here while working fine on a dev machine
+      # running a newer Node. Do not lower this.
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - run: npm ci

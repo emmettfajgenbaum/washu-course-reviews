@@ -37,10 +37,10 @@ don't already have" is defined by content, never by date.
   "WashU Course Reviews" label that existed only to contrast with it.
 - `RmpInstructor` in `lib/types.ts`.
 - `scripts/sync-rmp.js` (its GraphQL client moves into the new script).
-- The `rmp_instructors` table (dropped in migration 006).
+- The `rmp_instructors` table (dropped in migration 008).
 - The README's RMP paragraphs.
 
-### Migration `006_rmp_reviews.sql`
+### Migration `008_rmp_reviews.sql`
 
 ```sql
 alter table reviews add column source text not null default 'site';
@@ -150,7 +150,7 @@ count kept in a table again.
 
 ### Rollout order
 
-1. Merge nothing yet. Apply migration 006 in the SQL editor.
+1. Merge nothing yet. Apply migration 008 in the SQL editor.
 2. On the Mac: `node scripts/fix-review-instructor-names.js`, read the plan, then `--apply`.
 3. `node scripts/sync-rmp-reviews.js --max-insert 20000`, read the summary, then the same command with `--apply`.
 4. Verify on the site: no RMP box on an instructor page, new reviews on a course page, counts.

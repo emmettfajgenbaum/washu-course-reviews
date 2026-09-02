@@ -2,6 +2,10 @@
 
 import { useState, useCallback, useMemo } from "react";
 import type { CourseWithStats, Review } from "@/lib/types";
+import {
+  canonicalInstructorName,
+  dedupeInstructorNames,
+} from "@/lib/instructor-names";
 import ReviewForm from "./ReviewForm";
 import Link from "next/link";
 
@@ -38,29 +42,39 @@ export default function CourseDetail({
     setShowForm(false);
   }, []);
 
-  // Collect all unique instructors from reviews and course data
+  // Instructors who actually have reviews here, under the same folded names the
+  // filter below compares against — otherwise picking an option would match no
+  // reviews at all.
   const reviewInstructors = useMemo(() => {
-    const set = new Set<string>();
-    reviews.forEach((r) => {
-      if (r.instructor) set.add(r.instructor);
-    });
-    return Array.from(set).sort();
-  }, [reviews]);
+    const names = reviews.map((r) => r.instructor).filter(Boolean);
+    return dedupeInstructorNames(names, course.instructors).sort();
+  }, [reviews, course.instructors]);
 
+  // course.instructors holds full names ("Abigail Jager"); reviews hold the
+  // surname ("Jager"). Listing both put the same professor on the page twice,
+  // linking to two different pages. Fold them together, preferring the full
+  // name — which is also the only form that can match RateMyProfessors. A
+  // surname shared by several instructors stays on its own, since we cannot
+  // tell which of them a review belongs to.
   const allInstructors = useMemo(() => {
-    const set = new Set<string>();
-    course.instructors.forEach((i) => set.add(i));
-    reviews.forEach((r) => {
-      if (r.instructor) set.add(r.instructor);
-    });
-    return Array.from(set).sort();
+    const names = [
+      ...course.instructors,
+      ...reviews.map((r) => r.instructor).filter(Boolean),
+    ];
+    return dedupeInstructorNames(names, course.instructors).sort();
   }, [course.instructors, reviews]);
 
-  // Filter reviews by selected instructor
+  // Filter reviews by selected instructor, comparing the folded name so that
+  // picking "Abigail Jager" still matches reviews stored under "Jager".
   const filteredReviews = useMemo(() => {
     if (!instructor) return reviews;
-    return reviews.filter((r) => r.instructor === instructor);
-  }, [reviews, instructor]);
+    const target = instructor.toLowerCase();
+    return reviews.filter(
+      (r) =>
+        canonicalInstructorName(r.instructor, course.instructors).toLowerCase() ===
+        target
+    );
+  }, [reviews, instructor, course.instructors]);
 
   // Compute stats from filtered reviews
   const stats = useMemo(() => {

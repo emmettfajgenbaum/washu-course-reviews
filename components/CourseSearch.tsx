@@ -2,19 +2,23 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import type { CourseWithStats } from "@/lib/types";
+import type { CourseWithStats, InstructorSummary } from "@/lib/types";
 import CourseCard from "./CourseCard";
+import InstructorCard from "./InstructorCard";
 
 const PAGE_SIZE = 30;
 
 export default function CourseSearch({
   courses,
+  instructors = [],
   initialDepartment = "",
 }: {
   courses: CourseWithStats[];
+  instructors?: InstructorSummary[];
   initialDepartment?: string;
 }) {
   const router = useRouter();
+  const [mode, setMode] = useState<"courses" | "professors">("courses");
   const [search, setSearch] = useState("");
   const [department, setDepartment] = useState(initialDepartment);
   const [reviewFilter, setReviewFilter] = useState<"all" | "has-reviews">(
@@ -68,13 +72,61 @@ export default function CourseSearch({
     return result;
   }, [courses, search, department, reviewFilter, minQuality, maxDifficulty, sortBy]);
 
+  // Professors match on their own name and on any stored spelling that folded
+  // into it, so searching "Jager" still finds "Abigail Jager".
+  const filteredInstructors = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const result = instructors.filter((i) => {
+      if (!q) return true;
+      return (
+        i.name.toLowerCase().includes(q) ||
+        i.aliases.some((a) => a.toLowerCase().includes(q))
+      );
+    });
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "quality":
+          return (b.avg_quality ?? 0) - (a.avg_quality ?? 0);
+        case "difficulty":
+          return (a.avg_difficulty ?? 5) - (b.avg_difficulty ?? 5);
+        case "reviews":
+        default:
+          return b.review_count - a.review_count;
+      }
+    });
+    return result;
+  }, [instructors, search, sortBy]);
+
+  const showingProfessors = mode === "professors";
   const visible = filtered.slice(0, visibleCount);
+  const visibleInstructors = filteredInstructors.slice(0, visibleCount);
 
   return (
     <>
       {/* Sticky search/filter bar */}
       <div className="sticky top-0 z-40 bg-[#f7f5f0] border-b border-[#e2ddd5] py-4">
         <div className="max-w-4xl mx-auto px-4 space-y-3">
+          <div className="inline-flex rounded-lg border border-[#e2ddd5] bg-white p-0.5" role="tablist">
+            {(["courses", "professors"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                onClick={() => {
+                  setMode(m);
+                  setVisibleCount(PAGE_SIZE);
+                }}
+                className={`px-4 py-1.5 text-sm rounded-md transition-colors capitalize ${
+                  mode === m
+                    ? "bg-[#2d5234] text-white font-medium"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
           <input
             type="text"
             value={search}
@@ -82,11 +134,15 @@ export default function CourseSearch({
               setSearch(e.target.value);
               setVisibleCount(PAGE_SIZE);
             }}
-            placeholder="Search courses, departments, instructors..."
+            placeholder={
+              showingProfessors
+                ? "Search professors by name..."
+                : "Search courses, departments, instructors..."
+            }
             className="w-full px-4 py-2.5 bg-white border border-[#e2ddd5] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#2d5234]/30 focus:border-[#2d5234]"
           />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 items-end">
-            <div className="col-span-2 sm:col-span-1">
+            <div className={`col-span-2 sm:col-span-1 ${showingProfessors ? "hidden" : ""}`}>
               <label className="block text-xs text-gray-500 mb-1">
                 Department
               </label>
@@ -113,7 +169,7 @@ export default function CourseSearch({
               </select>
             </div>
 
-            <div>
+            <div className={showingProfessors ? "hidden" : ""}>
               <label className="block text-xs text-gray-500 mb-1">
                 Reviews
               </label>
@@ -145,11 +201,13 @@ export default function CourseSearch({
                 <option value="reviews">Most Reviews</option>
                 <option value="quality">Highest Quality</option>
                 <option value="difficulty">Lowest Difficulty</option>
-                <option value="recent">Most Recent</option>
+                {!showingProfessors && (
+                  <option value="recent">Most Recent</option>
+                )}
               </select>
             </div>
 
-            <div>
+            <div className={showingProfessors ? "hidden" : ""}>
               <label className="block text-xs text-gray-500 mb-1">
                 Min Quality: {minQuality.toFixed(1)}
               </label>
@@ -167,7 +225,7 @@ export default function CourseSearch({
               />
             </div>
 
-            <div>
+            <div className={showingProfessors ? "hidden" : ""}>
               <label className="block text-xs text-gray-500 mb-1">
                 Max Difficulty: {maxDifficulty.toFixed(1)}
               </label>
@@ -191,24 +249,37 @@ export default function CourseSearch({
       {/* Results */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         <p className="text-sm text-gray-500 mb-4">
-          {filtered.length} course{filtered.length !== 1 ? "s" : ""} found
+          {showingProfessors
+            ? `${filteredInstructors.length} professor${filteredInstructors.length !== 1 ? "s" : ""} found`
+            : `${filtered.length} course${filtered.length !== 1 ? "s" : ""} found`}
         </p>
 
         <div className="space-y-3">
-          {visible.map((course) => (
-            <CourseCard
-              key={course.id}
-              course={course}
-            />
-          ))}
+          {showingProfessors
+            ? visibleInstructors.map((instructor) => (
+                <InstructorCard key={instructor.name} instructor={instructor} />
+              ))
+            : visible.map((course) => (
+                <CourseCard key={course.id} course={course} />
+              ))}
         </div>
 
-        {visibleCount < filtered.length && (
+        {showingProfessors && filteredInstructors.length === 0 && (
+          <p className="text-sm text-gray-500 py-6 text-center">
+            No professors found.
+          </p>
+        )}
+
+        {visibleCount <
+          (showingProfessors ? filteredInstructors.length : filtered.length) && (
           <button
             onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
             className="w-full mt-6 py-2.5 bg-white border border-[#e2ddd5] rounded-lg text-sm font-medium text-gray-600 hover:bg-[#f7f5f0] transition-colors"
           >
-            Show More ({filtered.length - visibleCount} remaining)
+            Show More (
+            {(showingProfessors ? filteredInstructors.length : filtered.length) -
+              visibleCount}{" "}
+            remaining)
           </button>
         )}
       </div>

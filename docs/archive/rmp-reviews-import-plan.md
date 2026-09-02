@@ -4,7 +4,7 @@
 
 **Goal:** Import every RateMyProfessors rating the site does not already have as an ordinary review, and remove every RMP surface from the site.
 
-**Architecture:** A pure, unit-tested matching module (`scripts/lib/rmp-match.js`) turns RMP's free-text class field into a `courses` row and resolves instructor names. Two dry-run-by-default scripts use it: a monthly `sync-rmp-reviews.js` that replaces `sync-rmp.js` in the GitHub Actions workflow, and a one-time `fix-review-instructor-names.js`. Migration 006 adds `reviews.source` and `reviews.rmp_rating_id` and drops `rmp_instructors`; the instructor page loses its RMP row.
+**Architecture:** A pure, unit-tested matching module (`scripts/lib/rmp-match.js`) turns RMP's free-text class field into a `courses` row and resolves instructor names. Two dry-run-by-default scripts use it: a monthly `sync-rmp-reviews.js` that replaces `sync-rmp.js` in the GitHub Actions workflow, and a one-time `fix-review-instructor-names.js`. Migration 008 adds `reviews.source` and `reviews.rmp_rating_id` and drops `rmp_instructors`; the instructor page loses its RMP row.
 
 **Tech Stack:** Node 20 CommonJS scripts, `node --test` (built in, no new dependency), `@supabase/supabase-js`, RMP GraphQL, Next.js 16 App Router.
 
@@ -17,7 +17,7 @@
 - Every write is addressed by `id` or upserted on `rmp_rating_id`; re-running never duplicates.
 - Accuracy over coverage: anything ambiguous is skipped and reported, never guessed.
 - No new npm dependencies.
-- Migration 006 is applied by hand in the Supabase SQL editor; scripts refuse to run without it.
+- Migration 008 is applied by hand in the Supabase SQL editor; scripts refuse to run without it.
 - The scheduled workflow fires 2026-09-03 09:20 UTC and applies. The first large import happens by hand before the branch merges.
 
 ---
@@ -26,10 +26,10 @@
 
 | File | Responsibility |
 |---|---|
-| `supabase/migrations/006_rmp_reviews.sql` | Create | `source`, `rmp_rating_id` (+ unique constraint), instructor backup table, drop `rmp_instructors`. |
+| `supabase/migrations/008_rmp_reviews.sql` | Create | `source`, `rmp_rating_id` (+ unique constraint), instructor backup table, drop `rmp_instructors`. |
 | `scripts/lib/rmp-match.js` | Create | Pure functions: class parsing, course index, matching, dedupe keys, instructor resolution, date and entity handling. |
 | `scripts/lib/rmp-match.test.js` | Create | `node --test` cases for every function. |
-| `scripts/lib/env.js` | Create | The `.env.local` loader and Supabase client factory the three sync scripts each copy today; also `fetchAll(table, cols)` pagination and `assertMigration006`. |
+| `scripts/lib/env.js` | Create | The `.env.local` loader and Supabase client factory the three sync scripts each copy today; also `fetchAll(table, cols)` pagination and `assertMigration008`. |
 | `scripts/sync-rmp-reviews.js` | Create | Monthly import. Owns the RMP GraphQL client (moved from `sync-rmp.js`). |
 | `scripts/fix-review-instructor-names.js` | Create | One-time legacy name upgrade. |
 | `scripts/sync-rmp.js` | Delete | Superseded. |
@@ -42,19 +42,19 @@
 
 ---
 
-### Task 1: Migration 006 and the shared script helpers
+### Task 1: Migration 008 and the shared script helpers
 
 **Files:**
-- Create: `supabase/migrations/006_rmp_reviews.sql`
+- Create: `supabase/migrations/008_rmp_reviews.sql`
 - Create: `scripts/lib/env.js`
 
 **Interfaces:**
-- Produces: `loadEnv()`, `createSupabase()` → service-role client (exits 1 when env is missing), `fetchAll(supabase, table, columns, orderBy = "id")` → array of all rows in pages of 1,000, `assertMigration006(supabase)` → resolves or exits 1 with the SQL-editor instruction.
+- Produces: `loadEnv()`, `createSupabase()` → service-role client (exits 1 when env is missing), `fetchAll(supabase, table, columns, orderBy = "id")` → array of all rows in pages of 1,000, `assertMigration008(supabase)` → resolves or exits 1 with the SQL-editor instruction.
 
 - [ ] **Step 1: Write the migration** exactly as in the spec, with the header comment explaining safety (no deletes except `rmp_instructors`, backup table for instructor names, why a real unique constraint and not a partial index).
-- [ ] **Step 2: Write `scripts/lib/env.js`** by lifting `loadEnv` verbatim from `scripts/sync-rmp.js` lines 32-42 and the pagination loop from `scripts/gen-reviews.js` lines 180-190. `assertMigration006` runs `supabase.from("reviews").select("rmp_rating_id").limit(1)` and exits 1 on error with: `Migration 006 has not been applied. Paste supabase/migrations/006_rmp_reviews.sql into the Supabase SQL editor and run it, then re-run this script.`
+- [ ] **Step 2: Write `scripts/lib/env.js`** by lifting `loadEnv` verbatim from `scripts/sync-rmp.js` lines 32-42 and the pagination loop from `scripts/gen-reviews.js` lines 180-190. `assertMigration008` runs `supabase.from("reviews").select("rmp_rating_id").limit(1)` and exits 1 on error with: `Migration 008 has not been applied. Paste supabase/migrations/008_rmp_reviews.sql into the Supabase SQL editor and run it, then re-run this script.`
 - [ ] **Step 3: Smoke-test** with `node -e 'const e=require("./scripts/lib/env.js"); e.loadEnv(); const s=e.createSupabase(); e.fetchAll(s,"courses","id").then(r=>console.log(r.length))'` → prints 6831.
-- [ ] **Step 4: Commit** `git add supabase/migrations/006_rmp_reviews.sql scripts/lib/env.js`.
+- [ ] **Step 4: Commit** `git add supabase/migrations/008_rmp_reviews.sql scripts/lib/env.js`.
 
 ---
 
@@ -196,7 +196,7 @@ async function fetchRatings(teacherId) {
 - Create: `scripts/fix-review-instructor-names.js`
 
 **Interfaces:**
-- Consumes: `resolveInstructorName` from Task 2; `fetchAll`, `assertMigration006` from Task 1.
+- Consumes: `resolveInstructorName` from Task 2; `fetchAll`, `assertMigration008` from Task 1.
 
 - [ ] **Step 1: Write it.** Load courses and reviews; for reviews whose trimmed `instructor` has no whitespace, call `resolveInstructorName(course, instructor, null)`; a non-null, different result becomes `{ id, from, to }`. Tally `upgraded`, `no_candidate`, `ambiguous`, `already_full`. Write `fix-review-instructor-names-plan.json` with all three lists. Apply: `update reviews set instructor = to where id = id`, one request per row is fine for 4,830 rows, but batch as 50 concurrent `Promise.all` groups to keep it under a minute.
 - [ ] **Step 2: Dry-run against production.** Expected counts (from the 2026-09-02 probe): upgraded ≈ 4,830, no_candidate ≈ 181, ambiguous ≈ 121. Spot-check five rows in the plan file.
@@ -233,7 +233,7 @@ async function fetchRatings(teacherId) {
 ### Task 7: Rollout (by hand, in order)
 
 - [ ] **Step 1: Pre-mortem.** Invoke the `pre-mortem` skill once over Tasks 1-4 before any write.
-- [ ] **Step 2: Migration.** Emmett pastes `supabase/migrations/006_rmp_reviews.sql` into Supabase → SQL Editor → New query → Run. Verify: `node scripts/fix-review-instructor-names.js` no longer exits with the migration message.
+- [ ] **Step 2: Migration.** Emmett pastes `supabase/migrations/008_rmp_reviews.sql` into Supabase → SQL Editor → New query → Run. Verify: `node scripts/fix-review-instructor-names.js` no longer exits with the migration message.
 - [ ] **Step 3: Name upgrade.** Dry-run, read plan, `--apply`. Verify: re-run dry-run reports 0 to upgrade.
 - [ ] **Step 4: Import.** `node scripts/sync-rmp-reviews.js --max-insert 20000` (about 15 minutes), read the summary and the unmatched list, then the same command with `--apply`. Verify: re-run dry-run reports `insert: 0`, `known_id` ≈ the number inserted.
 - [ ] **Step 5: Site check.** `/instructor/Kathy%20Hafer` shows no RMP box and more reviews than before; `/course/2338` (BIOL 2960) count rose; `select count(*) from reviews where source='rmp'` matches the run.

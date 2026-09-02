@@ -38,12 +38,12 @@
 //
 // Env: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (read from
 // .env.local when present, e.g. locally; from the environment in CI).
-// Requires migration 006.
+// Requires migration 008.
 
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
-const { loadEnv, createSupabase, fetchAll, hasMigration006, MIGRATION_006_MESSAGE } = require("./lib/env.js");
+const { loadEnv, createSupabase, fetchAll, hasMigration008, MIGRATION_008_MESSAGE } = require("./lib/env.js");
 const M = require("./lib/rmp-match.js");
 
 loadEnv();
@@ -236,16 +236,16 @@ function toScore(primary, ...fallbacks) {
 
 async function main() {
   const supabase = createSupabase();
-  const has006 = await hasMigration006(supabase);
+  const has006 = await hasMigration008(supabase);
   if (!has006 && APPLY) {
-    console.error(MIGRATION_006_MESSAGE);
+    console.error(MIGRATION_008_MESSAGE);
     process.exit(1);
   }
 
   console.log(`Project: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
   console.log(APPLY ? "MODE: APPLY (will write changes)\n" : "MODE: DRY RUN (no writes)\n");
   if (!has006) {
-    console.warn("WARNING: migration 006 is not applied. Previewing without stored rating ids; --apply will refuse until it is.\n");
+    console.warn("WARNING: migration 008 is not applied. Previewing without stored rating ids; --apply will refuse until it is.\n");
   }
 
   console.log(`Looking up "${SCHOOL_NAME}" on RateMyProfessors...`);

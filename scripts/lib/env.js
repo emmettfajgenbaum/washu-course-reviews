@@ -1,6 +1,6 @@
 // Shared plumbing for the maintenance scripts: .env.local loading, the
 // service-role Supabase client, paginated full-table reads, and the check that
-// migration 006 has been applied. No dotenv dependency on purpose.
+// migration 008 has been applied. No dotenv dependency on purpose.
 
 const fs = require("fs");
 const path = require("path");
@@ -47,24 +47,24 @@ async function fetchAll(supabase, table, columns, orderBy = "id") {
   return rows;
 }
 
-// Migration 006 added reviews.rmp_rating_id (and the instructor backup table).
+// Migration 008 added reviews.rmp_rating_id (and the instructor backup table).
 // A dry run can work without it — useful for previewing on a machine that has
 // not applied it yet — but no write may happen until it is in place.
-async function hasMigration006(supabase) {
+async function hasMigration008(supabase) {
   const { error } = await supabase.from("reviews").select("rmp_rating_id").limit(1);
   return !error;
 }
 
-const MIGRATION_006_MESSAGE =
-  "Migration 006 has not been applied. Paste supabase/migrations/006_rmp_reviews.sql into the " +
+const MIGRATION_008_MESSAGE =
+  "Migration 008 has not been applied. Paste supabase/migrations/008_rmp_reviews.sql into the " +
   "Supabase SQL editor and run it, then re-run this script.";
 
-// Exit 1 with the instruction unless migration 006 is present. Call before any write.
-async function assertMigration006(supabase) {
-  if (!(await hasMigration006(supabase))) {
-    console.error(MIGRATION_006_MESSAGE);
+// Exit 1 with the instruction unless migration 008 is present. Call before any write.
+async function assertMigration008(supabase) {
+  if (!(await hasMigration008(supabase))) {
+    console.error(MIGRATION_008_MESSAGE);
     process.exit(1);
   }
 }
 
-module.exports = { loadEnv, createSupabase, fetchAll, hasMigration006, assertMigration006, MIGRATION_006_MESSAGE };
+module.exports = { loadEnv, createSupabase, fetchAll, hasMigration008, assertMigration008, MIGRATION_008_MESSAGE };

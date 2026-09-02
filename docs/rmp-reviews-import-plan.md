@@ -235,6 +235,6 @@ async function fetchRatings(teacherId) {
 - [ ] **Step 1: Pre-mortem.** Invoke the `pre-mortem` skill once over Tasks 1-4 before any write.
 - [ ] **Step 2: Migration.** Emmett pastes `supabase/migrations/006_rmp_reviews.sql` into Supabase → SQL Editor → New query → Run. Verify: `node scripts/fix-review-instructor-names.js` no longer exits with the migration message.
 - [ ] **Step 3: Name upgrade.** Dry-run, read plan, `--apply`. Verify: re-run dry-run reports 0 to upgrade.
-- [ ] **Step 4: Import.** `node scripts/sync-rmp-reviews.js --max-insert 20000` (about 12 minutes), read the summary and the unmatched list, then `--apply`. Verify: re-run dry-run reports `insert: 0`, `known_id` ≈ the number inserted.
+- [ ] **Step 4: Import.** `node scripts/sync-rmp-reviews.js --max-insert 20000` (about 15 minutes), read the summary and the unmatched list, then the same command with `--apply`. Verify: re-run dry-run reports `insert: 0`, `known_id` ≈ the number inserted.
 - [ ] **Step 5: Site check.** `/instructor/Kathy%20Hafer` shows no RMP box and more reviews than before; `/course/2338` (BIOL 2960) count rose; `select count(*) from reviews where source='rmp'` matches the run.
 - [ ] **Step 6: PR and merge.** Move `docs/rmp-reviews-import-design.md` and this plan to `docs/archive/`.

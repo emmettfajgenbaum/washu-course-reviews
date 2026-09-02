@@ -81,18 +81,27 @@ without it.
   4. Otherwise → skipped, with the class string recorded for the run summary.
   Measured on the sample: 579 of 697 matched, 31 unparseable, 87 skipped; the professor test
   rejected every wrong candidate.
-- `normalizeComment(s)` lowercases and strips non-alphanumerics. `dedupeKeys(comment, lastName, day)`
-  returns the comment key when the normalized comment is ≥ 20 characters, otherwise
-  `comment|lastname|YYYY-MM-DD`. Keys are computed on the raw RMP text and on its entity-decoded
-  form, because the legacy import kept `&quot;` verbatim while new rows are decoded. Legacy dates
-  match RMP's day in 288 of 289 sampled rows.
-- `resolveInstructorName(course, lastName, fallback, { directory, firstName })` → the one
-  `course.instructors` entry sharing the last name; else the one name in the whole catalog sharing
-  it (`buildInstructorDirectory`), provided the first initial agrees when RMP's first name is known
-  ("Steve Cole" for RMP's "Stephen Cole"; a second Chen anywhere means no match); else `fallback`.
-  (The catalog tier was added after the first dry run so one professor stays one string; it also
-  resolves 76 of the 181 legacy rows the course-only rule left alone, and RMP independently lists
-  exactly one professor with each of those surnames.)
+- `normalizeComment(s)` lowercases and strips non-alphanumerics, folding accents.
+  `dedupeKeys(comment, day)` returns the comment key when the normalized comment is ≥ 20
+  characters, otherwise `comment|YYYY-MM-DD`. The short key deliberately carries no surname: the
+  legacy rows spell instructors every which way ("Daschbach Eckhardt" for RMP's "Daschbach"), and
+  the pre-mortem found two short reviews that a surname-scoped key let in twice. Keys are computed
+  on the raw RMP text and on its entity-decoded form, because the legacy import kept `&quot;`
+  verbatim while new rows are decoded. Legacy dates match RMP's day in 288 of 289 sampled rows.
+- `resolveInstructorNameDetailed(course, lastName, { directory, firstName, existingNames })` →
+  `{ name, via }`: the one `course.instructors` entry sharing the last name and, when RMP's first
+  name is known, its initial (a course listing the same person twice counts once; 56 courses do);
+  else the one catalog-spelled full name already on that course's reviews; else the one name in the
+  whole catalog sharing it (`buildInstructorDirectory`) with the initial agreeing ("Steve Cole" for
+  RMP's "Stephen Cole"; a second Chen anywhere, or a differing initial, means no match); else null,
+  and the import falls back to RMP's "First Last" and counts it. Naming the wrong person is worse
+  than leaving a split, so every tier is gated.
+- `resolveLegacyName(value, course, { directory, existingNames })` is the one-time fixer's ladder
+  for the legacy spellings ("Hafer", "Petersen, D.", "Daschbach Eckhardt", "McLean Parks",
+  "L. Cuillé"): a catalog string is left alone; a comma form is tried once with its initial and is
+  final; otherwise the whole value as a multi-word surname, then the last token with the first token
+  as the initial, then the first token as a double surname the catalog shortens, accepted only from
+  the course's own list or reviews.
 - `parseRmpDate("2026-09-01 17:51:56 +0000 UTC")` → ISO string.
 - `decodeEntities(s)` handles the numeric and the five named entities.
 
@@ -123,10 +132,10 @@ without it.
 
 ### `scripts/fix-review-instructor-names.js` — one-time, dry-run by default
 
-For every review whose `instructor` is a single token, find `course.instructors` entries sharing
-that last name. Exactly one → set `instructor` to that entry. None → the catalog-wide unique name,
-if there is one. Several anywhere → leave it. Measured: 4,906 rows upgrade (4,830 from the course,
-76 from the catalog), 105 have no candidate, 121 are ambiguous. Writes
+For every review with a non-empty `instructor` that is not already a catalog string, run
+`resolveLegacyName`. A result → set `instructor` to it. Two different people sharing the surname on
+the course, or nothing anywhere → leave it. The plan file tallies every distinct `from -> to`
+rewrite so the whole mapping can be read in one screen. Writes
 `fix-review-instructor-names-plan.json` with the previous value of every row it touches. Updates are
 addressed by `id`.
 
@@ -143,7 +152,7 @@ count kept in a table again.
 
 1. Merge nothing yet. Apply migration 006 in the SQL editor.
 2. On the Mac: `node scripts/fix-review-instructor-names.js`, read the plan, then `--apply`.
-3. `node scripts/sync-rmp-reviews.js --max-insert 20000`, read the summary, then `--apply`.
+3. `node scripts/sync-rmp-reviews.js --max-insert 20000`, read the summary, then the same command with `--apply`.
 4. Verify on the site: no RMP box on an instructor page, new reviews on a course page, counts.
 5. Open the PR and merge. Vercel deploys. The scheduled run on the 3rd then only does the increment.
 

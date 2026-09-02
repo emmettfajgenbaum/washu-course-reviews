@@ -33,7 +33,10 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # ~5 min of bulletin crawl plus ~15 min of RMP (one request per rated
+    # professor); the rest is headroom for a slow RMP, since a timeout skips
+    # the artifact uploads below.
+    timeout-minutes: 50
     env:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -73,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sync-rmp-reviews-plan
-          path: sync-rmp-reviews-plan.json
+          path: sync-rmp-reviews-plan*.json
           if-no-files-found: ignore
           retention-days: 90
 

@@ -114,13 +114,18 @@ migrating and the first applied sync should be minutes, not until the 3rd of the
 Courses whose codes stay ambiguous land in the run summary's "Skipped" list for hand review;
 `bulletin_code_backup_005` (created by the migration) holds every cleared value.
 
-**Migration 006 and the first review import (2026-09-02):** 006 added `reviews.source`,
-`reviews.rmp_rating_id`, and `reviews_instructor_backup_006`, and dropped the old
-`rmp_instructors` table. `scripts/fix-review-instructor-names.js` then upgraded the legacy
-last-name-only instructor values ("Hafer") to the course's own spelling ("Kathy Hafer") wherever
-exactly one listed instructor shared the last name, and `sync-rmp-reviews.js --max-insert 20000`
-did the first, large import by hand before the branch merged, so the schedule only ever imports
-the monthly increment. The design and rollout record is `docs/archive/rmp-reviews-import-design.md`.
+**Migration 006 and the first review import, in order:** apply `006_rmp_reviews.sql` in the SQL
+editor (it adds `reviews.source` and `reviews.rmp_rating_id`, snapshots every instructor value into
+`reviews_instructor_backup_006`, and drops the old `rmp_instructors` table); run
+`scripts/fix-review-instructor-names.js`, preview then `--apply`, which rewrites the legacy
+instructor spellings ("Hafer", "Petersen, D.", "Daschbach Eckhardt") to the catalog's full names
+wherever exactly one person can be meant; then `scripts/sync-rmp-reviews.js --max-insert 20000`,
+preview then `--apply`, for the first, large import — by hand, before the branch merges, so the
+schedule only ever imports the monthly increment. The design and rollout record is
+`docs/rmp-reviews-import-design.md`. Both plan files and the `.applied-<timestamp>` copy the import
+writes are the recovery record for that wave (`delete from reviews where source = 'rmp' and
+rmp_rating_id in (...)`; `update reviews r set instructor = b.instructor from
+reviews_instructor_backup_006 b where b.id = r.id`).
 
 ## Scripts — one-time imports, not part of the app
 
@@ -138,7 +143,7 @@ the repo root before running any of these or they throw on `XLSX.readFile`:
 | `fix-reviews.js` | yes | Repairs rows from an earlier import |
 | `seed-reviews-api.js` | yes | Writes reviews through the API rather than direct SQL |
 | `dedupe-departments.js` | no | Removes duplicate values inside `courses.departments` |
-| `fix-review-instructor-names.js` | no | Upgraded legacy last-name-only review instructors to full names (run once, 2026-09-02); dry-run by default |
+| `fix-review-instructor-names.js` | no | Rewrites the legacy instructor spellings to the catalog's full names; one-time, dry-run by default |
 | `update-descriptions.js` | no | Refreshed course descriptions — **superseded by `sync-courses.js`**, do not run |
 
 `scripts/seed-reviews.sql` is generated output (~2 MB) and is gitignored.

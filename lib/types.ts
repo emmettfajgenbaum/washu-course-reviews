@@ -26,6 +26,10 @@ export interface Review {
   hours_per_week: string;
   comment: string;
   created_at: string;
+  // 'site' for reviews written here, 'xlsx' for the original import, 'rmp' for
+  // ratings scripts/sync-rmp-reviews.js imported. Never shown to users.
+  source: string;
+  rmp_rating_id: number | null;
 }
 
 export interface ReviewFlag {
@@ -34,17 +38,4 @@ export interface ReviewFlag {
   user_id: string;
   reason: string;
   created_at: string;
-}
-
-export interface RmpInstructor {
-  id: number;
-  legacy_id: number;
-  first_name: string;
-  last_name: string;
-  quality: number | null;
-  difficulty: number | null;
-  would_take_again: number | null;
-  num_ratings: number;
-  department: string;
-  synced_at: string;
 }

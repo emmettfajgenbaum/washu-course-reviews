@@ -1,0 +1,197 @@
+// node --test scripts/lib
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const {
+  parseClassString,
+  buildCourseIndex,
+  professorTeaches,
+  matchCourse,
+  normalizeComment,
+  dedupeKeys,
+  resolveInstructorName,
+  parseRmpDate,
+  decodeEntities,
+} = require("./rmp-match.js");
+
+// ---------- parseClassString ----------
+
+const PARSE_CASES = [
+  ["CSE131", { subject: "CSE", number: "131", suffix: "" }],
+  ["Bio2970", { subject: "BIOL", number: "2970", suffix: "" }],
+  ["cwp1508", { subject: "CWP", number: "1508", suffix: "" }],
+  ["L59CWP201", { subject: "CWP", number: "201", suffix: "" }],
+  ["L974413", { subject: "", number: "4413", suffix: "" }],
+  ["2960", { subject: "", number: "2960", suffix: "" }],
+  ["MGT200A", { subject: "MGT", number: "200", suffix: "A" }],
+  ["CHEM-2652", { subject: "CHEM", number: "2652", suffix: "" }],
+  ["MGMT100", { subject: "MGT", number: "100", suffix: "" }],
+  ["ORGO261S", { subject: "CHEM", number: "261", suffix: "S" }],
+  ["Econ 1011", { subject: "ECON", number: "1011", suffix: "" }],
+  ["CHEM261CHEM262", null],
+  ["Phonetics", null],
+  ["L13", null],
+  ["", null],
+  [null, null],
+  ["29602970", null],
+];
+for (const [input, expected] of PARSE_CASES) {
+  test(`parseClassString(${JSON.stringify(input)})`, () => {
+    assert.deepEqual(parseClassString(input), expected);
+  });
+}
+
+// ---------- buildCourseIndex ----------
+
+const keysFor = (index, id) =>
+  [...index.entries()].filter(([, ids]) => ids.has(id)).map(([k]) => k).sort();
+
+test("buildCourseIndex indexes old code and new bulletin code, with and without subject", () => {
+  const index = buildCourseIndex([{ id: 1, code: "L24 Math 233", bulletin_code: "MATH 2130" }]);
+  assert.deepEqual(keysFor(index, 1), ["#2130", "#233", "MATH 2130", "MATH 233"]);
+});
+
+test("buildCourseIndex indexes every cross-listing and keeps suffixed and unsuffixed keys", () => {
+  const index = buildCourseIndex([{ id: 7, code: "L90 AFAS 3255, L98 AMCS 325A", bulletin_code: "" }]);
+  assert.deepEqual(keysFor(index, 7), ["#325", "#3255", "AFAS 3255", "AMCS 325", "AMCS 325 A"]);
+});
+
+test("buildCourseIndex collapses multi-word subjects and skips unparseable parts", () => {
+  const index = buildCourseIndex([{ id: 3, code: "L16 Comp Lit 3123, junk", bulletin_code: "COMPLITTHT 3121" }]);
+  assert.deepEqual(keysFor(index, 3), ["#3121", "#3123", "COMPLIT 3123", "COMPLITTHT 3121"]);
+});
+
+// ---------- professorTeaches / matchCourse ----------
+
+const COURSES = [
+  { id: 10, code: "L24 Math 100", bulletin_code: "MATH 1010", instructors: ["Jane Roe"] },
+  { id: 11, code: "B53 Math 100", bulletin_code: "", instructors: ["Kathy Hafer"] },
+  { id: 20, code: "E81 CSE 131", bulletin_code: "CSE 1310", instructors: ["Douglas Shook"] },
+  { id: 30, code: "L41 BIOL 2960", bulletin_code: "BIOL 2960", instructors: ["Kathy Hafer"] },
+  { id: 31, code: "B99 XYZ 2960", bulletin_code: "", instructors: [] },
+];
+const REVIEWS_BY_COURSE = new Map([[31, [{ instructor: "Someone Else" }, { instructor: "Chen" }]]]);
+const ctx = () => ({
+  index: buildCourseIndex(COURSES),
+  coursesById: new Map(COURSES.map((c) => [c.id, c])),
+  reviewsByCourse: REVIEWS_BY_COURSE,
+});
+
+test("professorTeaches matches the last token of a listed instructor, case-insensitively", () => {
+  assert.equal(professorTeaches(COURSES[1], "HAFER", new Map()), true);
+  assert.equal(professorTeaches(COURSES[0], "Hafer", new Map()), false);
+});
+
+test("professorTeaches also counts an existing review's instructor", () => {
+  assert.equal(professorTeaches(COURSES[4], "Chen", REVIEWS_BY_COURSE), true);
+  assert.equal(professorTeaches(COURSES[4], "Chen", new Map()), false);
+});
+
+test("matchCourse: a single course under subject+number matches by code", () => {
+  const r = matchCourse(ctx(), parseClassString("CSE131"), "Nobody");
+  assert.deepEqual(r, { courseId: 20, rule: "code", profOnCourse: false });
+});
+
+test("matchCourse: records when the professor is on a code-matched course", () => {
+  const r = matchCourse(ctx(), parseClassString("CSE131"), "Shook");
+  assert.deepEqual(r, { courseId: 20, rule: "code", profOnCourse: true });
+});
+
+test("matchCourse: several courses under the code, professor on exactly one", () => {
+  const r = matchCourse(ctx(), parseClassString("MATH100"), "Hafer");
+  assert.deepEqual(r, { courseId: 11, rule: "code+prof", profOnCourse: true });
+});
+
+test("matchCourse: several courses under the code, professor on none -> skipped", () => {
+  const r = matchCourse(ctx(), parseClassString("MATH100"), "Nobody");
+  assert.deepEqual(r, { skipped: "ambiguous: MATH 100 (2 courses, professor on none)" });
+});
+
+test("matchCourse: number only, professor on exactly one of the number's courses", () => {
+  const r = matchCourse(ctx(), parseClassString("2960"), "Hafer");
+  assert.deepEqual(r, { courseId: 30, rule: "number+prof", profOnCourse: true });
+});
+
+test("matchCourse: number only via an existing review's instructor", () => {
+  const r = matchCourse(ctx(), parseClassString("2960"), "Chen");
+  assert.deepEqual(r, { courseId: 31, rule: "number+prof", profOnCourse: true });
+});
+
+test("matchCourse: number only, professor on none -> skipped even with one candidate", () => {
+  const r = matchCourse(ctx(), parseClassString("L974413"), "Nobody");
+  assert.deepEqual(r, { skipped: "no course for 4413" });
+  const r2 = matchCourse(ctx(), parseClassString("2960"), "Nobody");
+  assert.deepEqual(r2, { skipped: "ambiguous: 2960 (2 courses, professor on none)" });
+});
+
+test("matchCourse: unknown subject falls back to the number, still gated by the professor", () => {
+  const r = matchCourse(ctx(), parseClassString("CWP2960"), "Hafer");
+  assert.deepEqual(r, { courseId: 30, rule: "number+prof", profOnCourse: true });
+  const r2 = matchCourse(ctx(), parseClassString("CWP100"), "Nobody");
+  assert.deepEqual(r2, { skipped: "ambiguous: CWP 100 (2 courses, professor on none)" });
+});
+
+test("matchCourse: nothing under the number at all", () => {
+  const r = matchCourse(ctx(), parseClassString("CWP999"), "Hafer");
+  assert.deepEqual(r, { skipped: "no course for CWP 999" });
+});
+
+test("matchCourse: suffix narrows when present, falls back to the unsuffixed key", () => {
+  const c = ctx();
+  assert.deepEqual(matchCourse(c, parseClassString("CSE131A"), "Nobody"), {
+    courseId: 20,
+    rule: "code",
+    profOnCourse: false,
+  });
+});
+
+test("matchCourse: null parse -> skipped as unparseable", () => {
+  assert.deepEqual(matchCourse(ctx(), null, "Hafer"), { skipped: "unparseable class" });
+});
+
+// ---------- comments ----------
+
+test("normalizeComment keeps lowercase alphanumerics only", () => {
+  assert.equal(normalizeComment('I read &quot;The Jungle&quot; — twice!'), "ireadquotthejunglequottwice");
+  assert.equal(normalizeComment(null), "");
+});
+
+test("dedupeKeys: a long comment keys on the comment alone, raw and decoded", () => {
+  const keys = dedupeKeys("I read &quot;The Jungle&quot; in high school", "Hafer", "2024-05-01");
+  assert.deepEqual(keys, ["ireadquotthejunglequotinhighschool", "ireadthejungleinhighschool"]);
+});
+
+test("dedupeKeys: identical raw and decoded forms collapse to one key", () => {
+  assert.deepEqual(dedupeKeys("A perfectly ordinary comment here", "X", "2024-05-01"), [
+    "aperfectlyordinarycommenthere",
+  ]);
+});
+
+test("dedupeKeys: a short comment is scoped by professor and day", () => {
+  assert.deepEqual(dedupeKeys("Great class!", "Hafer", "2024-05-01"), ["greatclass|hafer|2024-05-01"]);
+});
+
+test("decodeEntities handles numeric and the common named entities", () => {
+  assert.equal(decodeEntities("hard&#8212;it &quot;is&quot; &amp; &#39;ok&#39; &lt;3&gt;"), "hard—it \"is\" & 'ok' <3>");
+  assert.equal(decodeEntities("plain"), "plain");
+});
+
+// ---------- instructor names ----------
+
+test("resolveInstructorName picks the one listed instructor sharing the last name", () => {
+  assert.equal(resolveInstructorName({ instructors: ["Kathy Hafer", "Rong Chen"] }, "hafer", "K Hafer"), "Kathy Hafer");
+  assert.equal(resolveInstructorName({ instructors: ["El Hadji Samba DIALLO"] }, "Diallo", "x"), "El Hadji Samba DIALLO");
+});
+
+test("resolveInstructorName falls back when there are zero or several candidates", () => {
+  assert.equal(resolveInstructorName({ instructors: ["A Smith", "B Smith"] }, "Smith", "C Smith"), "C Smith");
+  assert.equal(resolveInstructorName({ instructors: [] }, "Smith", "C Smith"), "C Smith");
+  assert.equal(resolveInstructorName(undefined, "Smith", null), null);
+});
+
+// ---------- dates ----------
+
+test("parseRmpDate turns RMP's format into ISO, and rejects garbage", () => {
+  assert.equal(parseRmpDate("2026-09-01 17:51:56 +0000 UTC"), "2026-09-01T17:51:56.000Z");
+  assert.equal(parseRmpDate("not a date"), null);
+  assert.equal(parseRmpDate(""), null);
+});

@@ -122,10 +122,18 @@ instructor spellings ("Hafer", "Petersen, D.", "Daschbach Eckhardt") to the cata
 wherever exactly one person can be meant; then `scripts/sync-rmp-reviews.js --max-insert 20000`,
 preview then `--apply`, for the first, large import — by hand, before the branch merges, so the
 schedule only ever imports the monthly increment. The design and rollout record is
-`docs/rmp-reviews-import-design.md`. Both plan files and the `.applied-<timestamp>` copy the import
-writes are the recovery record for that wave (`delete from reviews where source = 'rmp' and
+`docs/archive/rmp-reviews-import-design.md`. Both plan files and the `.applied-<timestamp>` copy the
+import writes are the recovery record for that wave (`delete from reviews where source = 'rmp' and
 rmp_rating_id in (...)`; `update reviews r set instructor = b.instructor from
 reviews_instructor_backup_006 b where b.id = r.id`).
+
+That rollout ran on 2026-09-02. The name fix rewrote 5,402 of 5,828 rows (115 left with a surname
+the catalog does not carry, 6 where two people share it). The import fetched 18,637 ratings from
+1,681 professors, recognised 4,728 as already on the site by text, and inserted 7,268; it skipped
+499 short or placeholder comments, 2,405 class strings it could not parse, 3,141 naming a course
+the catalog does not have (mostly pre-renumbering codes such as `CHEM105`, `PHYS197`), and 596 it
+could not disambiguate. Reviews went from 5,828 to 13,096. The applied plan for that wave is
+`sync-rmp-reviews-plan.applied-20260902T190613.json` on Emmett's Mac.
 
 ## Scripts — one-time imports, not part of the app
 

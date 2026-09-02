@@ -1,7 +1,7 @@
 # Design: import RateMyProfessors ratings as reviews, and remove RMP from the site
 
-**Date:** 2026-09-02 · **Status:** approved by Emmett in chat, implementation in progress.
-Move this file to `docs/archive/` once the work ships; the README then describes the live behaviour.
+**Date:** 2026-09-02 · **Status:** shipped 2026-09-02; archived. The README describes the live
+behaviour. Kept for the reasoning and the measured numbers, not as a current spec.
 
 ## Why
 

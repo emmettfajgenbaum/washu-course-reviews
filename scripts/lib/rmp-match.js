@@ -81,7 +81,13 @@ function buildCourseIndex(courses) {
   return index;
 }
 
-const squash = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+// Lowercase ASCII alphanumerics only; accents are folded ("Cuillé" -> "cuille").
+const squash = (s) =>
+  String(s || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
 
 // Does `lastName` end this full name at a word boundary? Handles multi-word
 // surnames ("Kristin Van Engen" / "Van Engen"), hyphens, and all-caps
@@ -169,18 +175,19 @@ function decodeEntities(s) {
 const normalizeComment = (s) => squash(s);
 
 // Keys under which "is this rating already on the site?" is answered. A long
-// comment identifies itself. A short one ("Great class!") is scoped by the
-// professor and the day it was posted. Both the raw and the entity-decoded
-// form are returned, because the xlsx import stored RMP's `&quot;` verbatim
-// while new rows are decoded.
+// comment identifies itself. A short one ("Great class!") is scoped by the day
+// it was posted — not by the professor, because the legacy rows spell
+// instructors every which way ("Daschbach Eckhardt", "Petersen, D.") and a
+// surname mismatch would let the same short review in twice. Both the raw and
+// the entity-decoded form are returned, because the xlsx import stored RMP's
+// `&quot;` verbatim while new rows are decoded.
 const LONG_COMMENT = 20;
-function dedupeKeys(comment, lastName, isoDay) {
+function dedupeKeys(comment, isoDay) {
   const raw = normalizeComment(comment);
   const decoded = normalizeComment(decodeEntities(comment));
   const forms = raw === decoded ? [raw] : [raw, decoded];
   if (raw.length >= LONG_COMMENT) return forms;
-  const scope = `|${squash(lastName)}|${isoDay}`;
-  return forms.map((f) => f + scope);
+  return forms.map((f) => `${f}|${isoDay}`);
 }
 
 // ---------- instructor names ----------
@@ -205,23 +212,103 @@ function buildInstructorDirectory(courses) {
   return directory;
 }
 
+const uniq = (arr) => [...new Set(arr)];
+const isFullName = (name, lastName) => squash(name) !== squash(lastName) && /\s/.test(String(name).trim());
+
 // The catalog's spelling of this professor's name, so one person is one string
-// across every review:
-//   1. exactly one instructor listed on this course shares the last name;
-//   2. else exactly one name in the whole catalog shares it, and when
+// across every review. Returns { name, via } with via one of "course",
+// "reviews", "catalog", or null when nothing resolves:
+//   1. exactly one instructor listed on this course shares the last name and,
+//      when `firstName` is known, its initial (a course that lists the same
+//      person twice still counts as one);
+//   2. else exactly one full name already on this course's reviews shares it
+//      (keeps a professor on the string their earlier reviews use);
+//   3. else exactly one name in the whole catalog shares it, and when
 //      `firstName` is known its initial agrees ("Steve Cole" for RMP's
 //      "Stephen Cole"; a second Chen anywhere in the catalog, or a first
-//      initial that differs, means no match);
-//   3. else `fallback`.
-function resolveInstructorName(course, lastName, fallback, { directory, firstName } = {}) {
-  const onCourse = ((course && course.instructors) || []).filter((name) => lastNameMatches(name, lastName));
-  if (onCourse.length === 1) return onCourse[0];
-  if (directory) {
+//      initial that differs, means no match).
+// A name is a catalog spelling when the directory holds it under its last token.
+const inCatalog = (directory, name) => {
+  const last = String(name || "").trim().split(/\s+/).pop();
+  return !!(directory && directory.get(squash(last))?.has(String(name).trim()));
+};
+
+function resolveInstructorNameDetailed(course, lastName, { directory, firstName, existingNames, noCatalog } = {}) {
+  const initial = squash(firstName).charAt(0);
+  const initialOk = (name) => !initial || squash(name).charAt(0) === initial;
+
+  const onCourse = uniq(
+    ((course && course.instructors) || []).filter((name) => lastNameMatches(name, lastName) && initialOk(name))
+  );
+  if (onCourse.length === 1) return { name: onCourse[0], via: "course" };
+  if (onCourse.length > 1) return { name: null, via: null, ambiguous: onCourse };
+
+  // Only catalog spellings count here — the legacy rows hold every kind of
+  // misspelling, and a wrong one must not propagate.
+  const onReviews = uniq(
+    (existingNames || []).filter(
+      (name) =>
+        isFullName(name, lastName) &&
+        lastNameMatches(name, lastName) &&
+        initialOk(name) &&
+        (!directory || inCatalog(directory, name))
+    )
+  );
+  if (onReviews.length === 1) return { name: onReviews[0], via: "reviews" };
+
+  if (directory && !noCatalog) {
     const names = [...(directory.get(squash(lastName)) || [])];
-    const initial = squash(firstName).charAt(0);
-    if (names.length === 1 && (!initial || squash(names[0]).charAt(0) === initial)) return names[0];
+    if (names.length === 1 && initialOk(names[0])) return { name: names[0], via: "catalog" };
   }
-  return fallback;
+  return { name: null, via: null };
+}
+
+// Convenience form: the resolved name, else `fallback`.
+function resolveInstructorName(course, lastName, fallback, opts = {}) {
+  return resolveInstructorNameDetailed(course, lastName, opts).name ?? fallback;
+}
+
+// The legacy import spelled instructors every which way: "Hafer", "Petersen, D.",
+// "Daschbach Eckhardt", "McLean Parks", "Van Engen", "M Tabakhi", "L. Cuillé".
+// Values that already are a catalog string are returned unchanged with via
+// "exact". A comma form ("Petersen, D.") names the person exactly and is the
+// only attempt. Otherwise, in order: the whole value as a (possibly
+// multi-word) surname; the last token as the surname with the first token as
+// the initial ("L. Cuillé" -> "Lionel Cuille", and "Boon Cuillé" resolves to
+// nobody rather than to Lionel); then the first token as a double surname the
+// catalog shortens ("Daschbach Eckhardt" -> "Megan Daschbach"), accepted only
+// from this course's own list or reviews, never catalog-wide.
+function resolveLegacyName(value, course, { directory, existingNames } = {}) {
+  const v = String(value || "").trim();
+  if (!v) return { name: null, via: null };
+  if (directory) {
+    for (const names of directory.values()) if (names.has(v)) return { name: v, via: "exact" };
+  }
+  const attempts = [];
+  const comma = v.match(/^([^,]+),\s*(.+)$/);
+  if (comma) {
+    // "Petersen, D." says exactly who is meant; if that does not resolve,
+    // nothing looser should.
+    attempts.push({ lastName: comma[1].trim(), firstName: comma[2].trim() });
+  } else {
+    attempts.push({ lastName: v });
+    const tokens = v.replace(/[.]/g, " ").trim().split(/\s+/).filter(Boolean);
+    if (tokens.length > 1) {
+      attempts.push({ lastName: tokens[tokens.length - 1], firstName: tokens[0] });
+      attempts.push({ lastName: tokens[0], noCatalog: true });
+    }
+  }
+  for (const a of attempts) {
+    const r = resolveInstructorNameDetailed(course, a.lastName, {
+      directory,
+      firstName: a.firstName,
+      existingNames,
+      noCatalog: a.noCatalog,
+    });
+    if (r.name) return r;
+    if (r.ambiguous) return r;
+  }
+  return { name: null, via: null };
 }
 
 // ---------- dates ----------
@@ -246,6 +333,8 @@ module.exports = {
   normalizeComment,
   dedupeKeys,
   buildInstructorDirectory,
+  resolveInstructorNameDetailed,
   resolveInstructorName,
+  resolveLegacyName,
   parseRmpDate,
 };

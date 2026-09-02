@@ -10,6 +10,9 @@ const {
   normalizeComment,
   dedupeKeys,
   resolveInstructorName,
+  resolveInstructorNameDetailed,
+  resolveLegacyName,
+  lastNameMatches,
   parseRmpDate,
   decodeEntities,
 } = require("./rmp-match.js");
@@ -167,18 +170,17 @@ test("normalizeComment keeps lowercase alphanumerics only", () => {
 });
 
 test("dedupeKeys: a long comment keys on the comment alone, raw and decoded", () => {
-  const keys = dedupeKeys("I read &quot;The Jungle&quot; in high school", "Hafer", "2024-05-01");
+  const keys = dedupeKeys("I read &quot;The Jungle&quot; in high school", "2024-05-01");
   assert.deepEqual(keys, ["ireadquotthejunglequotinhighschool", "ireadthejungleinhighschool"]);
 });
 
 test("dedupeKeys: identical raw and decoded forms collapse to one key", () => {
-  assert.deepEqual(dedupeKeys("A perfectly ordinary comment here", "X", "2024-05-01"), [
-    "aperfectlyordinarycommenthere",
-  ]);
+  assert.deepEqual(dedupeKeys("A perfectly ordinary comment here", "2024-05-01"), ["aperfectlyordinarycommenthere"]);
 });
 
-test("dedupeKeys: a short comment is scoped by professor and day", () => {
-  assert.deepEqual(dedupeKeys("Great class!", "Hafer", "2024-05-01"), ["greatclass|hafer|2024-05-01"]);
+test("dedupeKeys: a short comment is scoped by day only, never by how the instructor was spelled", () => {
+  assert.deepEqual(dedupeKeys("Great class!", "2024-05-01"), ["greatclass|2024-05-01"]);
+  assert.deepEqual(dedupeKeys("She is amazing", "2023-04-09"), ["sheisamazing|2023-04-09"]);
 });
 
 test("decodeEntities handles numeric and the common named entities", () => {
@@ -229,6 +231,110 @@ test("resolveInstructorName: without a first name, a catalog-unique last name st
 
 test("resolveInstructorName: the course's own listing beats the directory", () => {
   assert.equal(resolveInstructorName({ instructors: ["Stephen Cole"] }, "Cole", "x", { directory: DIRECTORY, firstName: "Stephen" }), "Stephen Cole");
+});
+
+test("resolveInstructorName: a listed instructor with a different first initial is not this professor", () => {
+  const course = { instructors: ["Kathy Hafer"] };
+  assert.equal(resolveInstructorName(course, "Hafer", "Gail Hafer", { firstName: "Gail" }), "Gail Hafer");
+  assert.equal(resolveInstructorName(course, "Hafer", "x", { firstName: "Kathleen" }), "Kathy Hafer");
+});
+
+test("resolveInstructorName: a course listing the same person twice is one candidate, not two", () => {
+  const course = { instructors: ["Heather Barton", "Someone Else", "Heather Barton"] };
+  assert.deepEqual(resolveInstructorNameDetailed(course, "Barton"), { name: "Heather Barton", via: "course" });
+});
+
+test("resolveInstructorName: two different people on the course -> ambiguous, no directory fallback", () => {
+  const course = { instructors: ["Brian Garnett", "Roman Garnett"] };
+  const r = resolveInstructorNameDetailed(course, "Garnett", { directory: buildInstructorDirectory([course]) });
+  assert.equal(r.name, null);
+  assert.deepEqual(r.ambiguous, ["Brian Garnett", "Roman Garnett"]);
+});
+
+test("resolveInstructorName: a catalog full name already on the course's reviews beats a catalog-wide tie", () => {
+  const directory = buildInstructorDirectory([{ instructors: ["Kathleen Hafer"] }, { instructors: ["Kathy Hafer"] }]);
+  const r = resolveInstructorNameDetailed({ instructors: [] }, "Hafer", {
+    directory,
+    existingNames: ["Hafer", "Kathy Hafer", "Hafer"],
+    firstName: "Kathleen",
+  });
+  assert.deepEqual(r, { name: "Kathy Hafer", via: "reviews" });
+});
+
+test("resolveInstructorName: a non-catalog spelling on the course's reviews is ignored", () => {
+  const directory = buildInstructorDirectory([{ instructors: ["Kathleen Hafer"] }]);
+  const r = resolveInstructorNameDetailed({ instructors: [] }, "Hafer", {
+    directory,
+    existingNames: ["Kathy Hafer"],
+    firstName: "Kathleen",
+  });
+  assert.deepEqual(r, { name: "Kathleen Hafer", via: "catalog" });
+});
+
+test("resolveInstructorName: bare surnames on existing reviews are not full names", () => {
+  const r = resolveInstructorNameDetailed({ instructors: [] }, "Hafer", { existingNames: ["Hafer", "HAFER"] });
+  assert.deepEqual(r, { name: null, via: null });
+});
+
+test("lastNameMatches folds accents", () => {
+  assert.equal(lastNameMatches("Lionel Cuille", "Cuillé"), true);
+  assert.equal(lastNameMatches("Ignacio Sánchez Prado", "Sanchez Prado"), true);
+});
+
+const LEGACY_COURSES = [
+  { id: 1, instructors: ["Megan Daschbach", "Dorothy Petersen", "Judi McLean Parks", "Kristin Van Engen", "Athena MTabakhi", "Ann Mohr"] },
+  { id: 2, instructors: ["Wei Wang", "Wen Wang"] },
+  { id: 3, instructors: ["Lionel Cuille"] },
+  { id: 4, instructors: [] },
+];
+const LEGACY_DIR = buildInstructorDirectory(LEGACY_COURSES);
+const legacy = (value, course = LEGACY_COURSES[0], existingNames = []) =>
+  resolveLegacyName(value, course, { directory: LEGACY_DIR, existingNames });
+
+test("resolveLegacyName: a value that is already a catalog string is left as it is", () => {
+  assert.deepEqual(legacy("Megan Daschbach"), { name: "Megan Daschbach", via: "exact" });
+});
+
+test("resolveLegacyName: bare surname, multi-word surname, and 'Last, Initial' forms", () => {
+  assert.equal(legacy("Petersen").name, "Dorothy Petersen");
+  assert.equal(legacy("McLean Parks").name, "Judi McLean Parks");
+  assert.equal(legacy("Van Engen").name, "Kristin Van Engen");
+  assert.equal(legacy("Petersen, D.").name, "Dorothy Petersen");
+  assert.equal(legacy("M Tabakhi").name, "Athena MTabakhi");
+  assert.equal(legacy("Ann Marie Mohr").name, "Ann Mohr");
+});
+
+test("resolveLegacyName: an initial plus surname resolves catalog-wide when the initial agrees", () => {
+  assert.deepEqual(legacy("L. Cuillé", LEGACY_COURSES[3]), { name: "Lionel Cuille", via: "catalog" });
+  assert.equal(legacy("Boon Cuillé", LEGACY_COURSES[3]).name, null);
+});
+
+test("resolveLegacyName: the reviews tier only accepts catalog spellings", () => {
+  assert.equal(legacy("L. Cuillé", LEGACY_COURSES[3], ["Boon Cuillé"]).name, "Lionel Cuille");
+  assert.equal(legacy("Cuillé", LEGACY_COURSES[3], ["Boon Cuillé", "Lionel Cuille"]).name, "Lionel Cuille");
+});
+
+test("resolveLegacyName: a double surname resolves only from the course, never catalog-wide", () => {
+  assert.equal(legacy("Daschbach Eckhardt", LEGACY_COURSES[3]).name, null);
+});
+
+test("resolveLegacyName: a double surname the catalog shortens resolves through its first token", () => {
+  assert.deepEqual(legacy("Daschbach Eckhardt"), { name: "Megan Daschbach", via: "course" });
+});
+
+test("resolveLegacyName: 'Last, Initial' with a wrong initial does not resolve", () => {
+  assert.equal(legacy("Petersen, X.").name, null);
+});
+
+test("resolveLegacyName: two people sharing the surname on the course stays ambiguous", () => {
+  const r = legacy("Wang, W", LEGACY_COURSES[1]);
+  assert.equal(r.name, null);
+  assert.deepEqual(r.ambiguous, ["Wei Wang", "Wen Wang"]);
+});
+
+test("resolveLegacyName: empty and unknown values resolve to nothing", () => {
+  assert.equal(legacy("").name, null);
+  assert.equal(legacy("Nobody").name, null);
 });
 
 // ---------- dates ----------

@@ -70,6 +70,7 @@ const RATINGS_PAGE_SIZE = 200;
 const MAX_TEACHERS = 20000; // hard cap; WashU is a few thousand
 const MIN_EXPECTED_TEACHERS = 1000; // fewer means a truncated or reshaped response
 const MAX_FETCH_FAILURE_RATE = 0.05;
+const MAX_CONSECUTIVE_FETCH_FAILURES = 10; // RMP is down or blocking us: stop now, not in an hour
 const REQUEST_DELAY_MS = 400;
 const PLAN_PATH = path.resolve(__dirname, "..", "sync-rmp-reviews-plan.json");
 const PLACEHOLDER_COMMENT = /^no comments?\.?$/i;
@@ -97,10 +98,17 @@ async function rmpQuery(query, variables) {
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (json.errors) throw new Error(`GraphQL: ${JSON.stringify(json.errors).slice(0, 300)}`);
+      if (json.errors) {
+        const msg = JSON.stringify(json.errors).slice(0, 300);
+        const err = new Error(`GraphQL: ${msg}`);
+        // A query that no longer matches RMP's schema will never succeed on
+        // retry — surface it at once instead of backing off 1,700 times.
+        err.schemaChange = /Cannot query field|Unknown argument|Unknown type|Field .* doesn't exist/i.test(msg);
+        throw err;
+      }
       return json.data;
     } catch (e) {
-      if (attempt === 4) throw e;
+      if (attempt === 4 || e.schemaChange) throw e;
       console.warn(`  RMP request failed (${e.message}); retrying in ${2 ** attempt}s...`);
       await sleep(2 ** attempt * 1000);
     }
@@ -133,6 +141,7 @@ async function findSchool() {
 
 async function fetchAllTeachers(schoolId) {
   const teachers = [];
+  let resultCount = null;
   let cursor = "";
   for (;;) {
     const data = await rmpQuery(
@@ -149,6 +158,7 @@ async function fetchAllTeachers(schoolId) {
     );
     const conn = data?.search?.teachers;
     if (!conn) throw new Error("Unexpected teacher search response shape");
+    if (typeof conn.resultCount === "number") resultCount = conn.resultCount;
     for (const edge of conn.edges || []) {
       const n = edge.node;
       if (!n || !n.id || !n.legacyId || !n.lastName) continue;
@@ -167,6 +177,11 @@ async function fetchAllTeachers(schoolId) {
     await sleep(REQUEST_DELAY_MS);
   }
   console.log("");
+  // RMP says how many professors there are; a pagination that stopped early
+  // would otherwise look like a quiet month.
+  if (resultCount !== null && teachers.length < resultCount * 0.95) {
+    throw new Error(`Fetched ${teachers.length} professors but RMP reports ${resultCount} — pagination stopped early. Aborting.`);
+  }
   // Dedupe by legacy_id defensively (pagination can overlap).
   const byLegacyId = new Map();
   for (const t of teachers) byLegacyId.set(t.legacy_id, t);
@@ -205,8 +220,6 @@ async function fetchRatings(teacherId) {
 }
 
 // ---------- row building ----------
-
-const lastToken = (name) => String(name || "").trim().split(/\s+/).pop() || "";
 
 function toScore(primary, ...fallbacks) {
   let v = typeof primary === "number" ? primary : null;
@@ -270,13 +283,12 @@ async function main() {
   }
   const ctx = { index: M.buildCourseIndex(courses), coursesById, reviewsByCourse };
   const directory = M.buildInstructorDirectory(courses);
+  const namesOnCourse = (courseId) => (reviewsByCourse.get(courseId) || []).map((r) => r.instructor);
 
   const knownIds = new Set(reviews.map((r) => r.rmp_rating_id).filter((x) => x != null));
   const seenKeys = new Set();
   for (const r of reviews) {
-    for (const k of M.dedupeKeys(r.comment, lastToken(r.instructor), String(r.created_at).slice(0, 10))) {
-      seenKeys.add(k);
-    }
+    for (const k of M.dedupeKeys(r.comment, String(r.created_at).slice(0, 10))) seenKeys.add(k);
   }
 
   const counts = {
@@ -298,7 +310,9 @@ async function main() {
   const unmatchedClasses = new Map();
   const fetchFailures = [];
   const rules = { code: 0, "code+prof": 0, "number+prof": 0 };
+  const nameVia = { course: 0, reviews: 0, catalog: 0, rmp: 0 };
   const now = new Date().toISOString();
+  let consecutiveFailures = 0;
 
   console.log("Fetching ratings...");
   for (let i = 0; i < rated.length; i++) {
@@ -307,9 +321,19 @@ async function main() {
     let ratings;
     try {
       ratings = await fetchRatings(t.id);
+      consecutiveFailures = 0;
     } catch (e) {
       counts.fetch_failures++;
+      consecutiveFailures++;
       fetchFailures.push({ professor, legacy_id: t.legacy_id, error: e.message });
+      if (e.schemaChange) {
+        console.error(`\nRMP's ratings schema has changed (${e.message}). Nothing written; the query in fetchRatings needs updating.`);
+        process.exit(1);
+      }
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FETCH_FAILURES) {
+        console.error(`\n${consecutiveFailures} professor fetches failed in a row (last: ${e.message}). RMP is down or refusing us. Nothing written.`);
+        process.exit(1);
+      }
       continue;
     }
     counts.ratings_fetched += ratings.length;
@@ -331,7 +355,7 @@ async function main() {
         counts.date_fallback++;
         createdAt = now;
       }
-      const keys = M.dedupeKeys(rawComment, t.last_name, createdAt.slice(0, 10));
+      const keys = M.dedupeKeys(rawComment, createdAt.slice(0, 10));
       if (keys.some((k) => seenKeys.has(k))) {
         // Already on the site (xlsx import) or already queued this run.
         if (inserts.some((row) => row.rmp_rating_id === id)) counts.duplicate_in_run++;
@@ -359,12 +383,18 @@ async function main() {
       }
 
       const course = coursesById.get(match.courseId);
+      const resolved = M.resolveInstructorNameDetailed(course, t.last_name, {
+        directory,
+        firstName: t.first_name,
+        existingNames: namesOnCourse(course.id),
+      });
+      nameVia[resolved.via || "rmp"]++;
       const row = {
         course_id: match.courseId,
         user_id: crypto.randomUUID(),
         quality,
         difficulty,
-        instructor: M.resolveInstructorName(course, t.last_name, professor, { directory, firstName: t.first_name }),
+        instructor: resolved.name || professor,
         hours_per_week: "",
         comment,
         created_at: createdAt,
@@ -394,16 +424,28 @@ async function main() {
     limit_professors: LIMIT_PROFESSORS || null,
     counts,
     rules,
+    instructor_name_source: nameVia,
     unmatched_classes: topUnmatched,
     fetch_failures: fetchFailures,
     inserts,
     skipped,
   };
-  fs.writeFileSync(PLAN_PATH, JSON.stringify(plan, null, 1));
+  // The dry-run plan is overwritten by every run; an applied run also keeps a
+  // timestamped copy, which is the recovery record for exactly that wave.
+  const appliedPlanPath = APPLY
+    ? PLAN_PATH.replace(/\.json$/, `.applied-${now.replace(/[-:]/g, "").slice(0, 15)}.json`)
+    : null;
+  const writePlan = () => {
+    const text = JSON.stringify(plan, null, 1);
+    fs.writeFileSync(PLAN_PATH, text);
+    if (appliedPlanPath) fs.writeFileSync(appliedPlanPath, text);
+  };
+  writePlan();
 
   const summaryLines = [
     `Ratings fetched: ${counts.ratings_fetched} from ${rated.length - counts.fetch_failures} professors (${counts.fetch_failures} fetch failures)`,
     `To insert: ${counts.insert}  (matched by code ${rules.code}, code+professor ${rules["code+prof"]}, number+professor ${rules["number+prof"]})`,
+    `Instructor spelling taken from: the course's list ${nameVia.course}, its existing reviews ${nameVia.reviews}, the catalog ${nameVia.catalog}, RMP as written ${nameVia.rmp}`,
     `Already on the site: ${counts.known_id} by rating id, ${counts.legacy_comment} by comment text, ${counts.duplicate_in_run} duplicates within this run`,
     `Skipped: ${counts.short_or_placeholder} short/placeholder comments, ${counts.no_rating} without usable scores, ${counts.unparseable} unparseable class strings, ${counts.no_match} with no such course, ${counts.ambiguous} ambiguous`,
     `Dates that could not be parsed (stamped with the run time): ${counts.date_fallback}`,
@@ -412,7 +454,7 @@ async function main() {
   for (const l of summaryLines) console.log(l);
   console.log(`\nTop unmatched class strings:`);
   for (const [cls, n] of topUnmatched.slice(0, 30)) console.log(`  ${String(n).padStart(4)}  ${cls}`);
-  console.log(`\nPlan written to ${PLAN_PATH}`);
+  console.log(`\nPlan written to ${PLAN_PATH}${appliedPlanPath ? ` and ${appliedPlanPath}` : ""}`);
 
   if (process.env.GITHUB_STEP_SUMMARY) {
     const md = [
@@ -470,7 +512,7 @@ async function main() {
   console.log(`\nInserted ${ok}/${inserts.length} reviews.`);
   if (failedBatches.length) {
     plan.failed_batches = failedBatches;
-    fs.writeFileSync(PLAN_PATH, JSON.stringify(plan, null, 1));
+    writePlan();
     console.error(`${failedBatches.length} batch(es) failed; see failed_batches in the plan file. A re-run picks them up.`);
     process.exitCode = 1;
   }

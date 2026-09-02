@@ -69,10 +69,12 @@ without it.
   `MGMT→MGT`, `PSY→PSYCH`, `SPANISH→SPAN`, `ORGO/OCHEM→CHEM`. Anything else (`CHEM261CHEM262`,
   `Phonetics`, `L13`) returns `null`.
 - `buildCourseIndex(courses)` indexes every comma-separated part of `courses.code` (minus the
-  `L24`-style prefix) and `bulletin_code`, under `SUBJECT+NUMBER+SUFFIX`, `SUBJECT+NUMBER`, and
-  `NUMBER` alone. Old and new numbering are both covered because both live in those columns.
+  `L24`-style prefix) and `bulletin_code`, under an exact key where the suffix or its absence is
+  part of the identity (`CSE 247|` vs `CSE 247|R`), a loose `SUBJECT+NUMBER` key, and `NUMBER`
+  alone. Old and new numbering are both covered because both live in those columns. (Added after
+  the first dry run: "CSE247" was tying between CSE 247 and its recitation CSE 247R.)
 - `matchCourse(index, courses, parsed, professor, existingReviews)`:
-  1. Exactly one course under `SUBJECT+NUMBER(+SUFFIX)` → match.
+  1. Exactly one course under the exact key, else under `SUBJECT+NUMBER` → match.
   2. Several → keep those where the professor's last name is on `course.instructors` or already on a
      review of that course; exactly one survivor → match.
   3. No subject match → `NUMBER` alone, accepted only via step 2's professor test.
@@ -84,8 +86,13 @@ without it.
   `comment|lastname|YYYY-MM-DD`. Keys are computed on the raw RMP text and on its entity-decoded
   form, because the legacy import kept `&quot;` verbatim while new rows are decoded. Legacy dates
   match RMP's day in 288 of 289 sampled rows.
-- `resolveInstructorName(course, lastName, fallback)` → the one `course.instructors` entry whose last
-  token equals `lastName` (case-insensitive), else `fallback`.
+- `resolveInstructorName(course, lastName, fallback, { directory, firstName })` → the one
+  `course.instructors` entry sharing the last name; else the one name in the whole catalog sharing
+  it (`buildInstructorDirectory`), provided the first initial agrees when RMP's first name is known
+  ("Steve Cole" for RMP's "Stephen Cole"; a second Chen anywhere means no match); else `fallback`.
+  (The catalog tier was added after the first dry run so one professor stays one string; it also
+  resolves 76 of the 181 legacy rows the course-only rule left alone, and RMP independently lists
+  exactly one professor with each of those surnames.)
 - `parseRmpDate("2026-09-01 17:51:56 +0000 UTC")` → ISO string.
 - `decodeEntities(s)` handles the numeric and the five named entities.
 
@@ -116,9 +123,10 @@ without it.
 
 ### `scripts/fix-review-instructor-names.js` — one-time, dry-run by default
 
-For every review whose `instructor` is a single token, find `course.instructors` entries whose last
-token equals it case-insensitively. Exactly one → set `instructor` to that entry. Zero or several →
-leave it. Measured: 4,830 rows upgrade, 181 have no candidate, 121 are ambiguous. Writes
+For every review whose `instructor` is a single token, find `course.instructors` entries sharing
+that last name. Exactly one → set `instructor` to that entry. None → the catalog-wide unique name,
+if there is one. Several anywhere → leave it. Measured: 4,906 rows upgrade (4,830 from the course,
+76 from the catalog), 105 have no candidate, 121 are ambiguous. Writes
 `fix-review-instructor-names-plan.json` with the previous value of every row it touches. Updates are
 addressed by `id`.
 

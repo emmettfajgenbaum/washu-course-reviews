@@ -29,7 +29,7 @@ Add a domain in `auth-domains.ts` and all three follow. Never hardcode a domain 
 |---|---|
 | `app/page.tsx` | Search and browse |
 | `app/course/[id]` | One course, its reviews, its instructors |
-| `app/instructor/[name]` | One instructor across courses — includes RateMyProfessors ratings when confident (see below) |
+| `app/instructor/[name]` | One instructor across courses |
 | `app/auth/login` | Magic-link request |
 | `app/auth/domain-error` | The "you're not a WashU address" wall |
 | `app/api/keep-alive` | Cron target — see below |
@@ -54,17 +54,19 @@ npm run dev
 
 Apply `supabase/migrations/*.sql` **in filename order** against a fresh database. Note that two files
 share the `003_` prefix (`003_add_feedback.sql` and `003_clerk_auth.sql`); they are independent and
-either order works, but everything numbered `004_` and later assumes both have run.
+either order works, but everything numbered `004_` and later assumes both have run. Migrations are
+applied by hand in the Supabase SQL editor; there is no CLI link or database password on any machine.
 
 ## The monthly data sync
 
 `.github/workflows/sync-data.yml` runs on the 3rd of every month. Scheduled runs write;
 **a manual *Run workflow* is a preview unless the "Write changes" box is checked**, so a stray
-click can never touch production. Every run uploads `sync-courses-plan.json` as an artifact
-(kept 90 days) — the full change plan including the previous value of every field an update
-touches, which is the recovery record if a run ever writes garbage (the free Supabase tier has
-no point-in-time restore). The workflow also re-enables itself on every run so GitHub's 60-day
-inactivity rule can't silently kill the schedule on a quiet repo.
+click can never touch production. Every run uploads two artifacts (kept 90 days):
+`sync-courses-plan.json`, the full change plan including the previous value of every field an
+update touches, and `sync-rmp-reviews-plan.json`, every review inserted and every rating skipped
+with its reason. They are the recovery record if a run ever writes garbage (the free Supabase
+tier has no point-in-time restore). The workflow also re-enables itself on every run so GitHub's
+60-day inactivity rule can't silently kill the schedule on a quiet repo.
 
 It runs two scripts, both **dry-run by default** and only writing when passed `--apply`:
 
@@ -79,12 +81,25 @@ It runs two scripts, both **dry-run by default** and only writing when passed `-
   index on `bulletin_code` (migration 005) means a matching bug fails loudly instead of creating
   a duplicate listing. It supersedes `scripts/update-descriptions.js`, whose name-only matching
   polluted `bulletin_code` — migration 005 also cleans that up.
-- **`scripts/sync-rmp.js`** pulls every WashU professor's quality/difficulty ratings from
-  RateMyProfessors' GraphQL endpoint into `rmp_instructors`, upserted on RMP's professor id.
-  The instructor page shows the RMP row **only when the instructor's first and last name both
-  match exactly one RMP professor** (no fuzzy matching; two RMP professors sharing a name means
-  neither is shown), with a link to the RMP profile as the citation. Note:
-  RMP's terms of use restrict automated access; this is a deliberate, low-volume monthly batch.
+- **`scripts/sync-rmp-reviews.js`** imports every RateMyProfessors rating for WashU that the site
+  does not already have as an ordinary review (`reviews.source = 'rmp'`). Every review on the site
+  came from RMP in the first place — the May 2026 xlsx import was a scrape of it — so there is no
+  separate RMP surface on the site any more; the ratings simply become reviews, undated by nothing
+  but RMP's own posting date, with no marker. Per rating: skip it when its `rmp_rating_id` is already
+  in `reviews`; skip it when the comment is under 10 characters or a "No Comments" placeholder; skip
+  it when the comment text is already on the site (the xlsx import never stored rating ids, so text
+  is the bridge to the legacy rows); otherwise map RMP's free-text class field to a course. That
+  field is whatever a student typed — `CSE131`, `Bio2970`, `cwp1508`, `L59CWP201`, sometimes just
+  `2960` — so `scripts/lib/rmp-match.js` (unit-tested, `npm test`) parses it and matches, in order:
+  exactly one course under subject + number across old codes, bulletin codes, and cross-listings;
+  several courses but the professor is listed on (or already reviewed on) exactly one; the number
+  alone, accepted only through that professor test. Anything else is skipped and tallied in the
+  run summary by class string. Imported reviews carry the professor's full name in the course's own
+  spelling when it lists them. `--max-insert` (default 2,000; new ratings run about 300 a month)
+  stops a matching bug from mass-inserting; writes are upserts on `rmp_rating_id` with duplicates
+  ignored, so a re-run never doubles a rating. Requires migration 006; a dry run works without it,
+  `--apply` refuses. Note: RMP's terms of use restrict automated access; this is a deliberate,
+  low-volume monthly batch, roughly one request per rated professor.
 
 The workflow needs two repository secrets mirroring the Vercel production values
 (`docs/washu-prod-env-vars.md`, which documents the rotate-in-both-places rule):
@@ -98,6 +113,14 @@ had stamped onto multiple rows, and search matches on that column, so the gap be
 migrating and the first applied sync should be minutes, not until the 3rd of the month.
 Courses whose codes stay ambiguous land in the run summary's "Skipped" list for hand review;
 `bulletin_code_backup_005` (created by the migration) holds every cleared value.
+
+**Migration 006 and the first review import (2026-09-02):** 006 added `reviews.source`,
+`reviews.rmp_rating_id`, and `reviews_instructor_backup_006`, and dropped the old
+`rmp_instructors` table. `scripts/fix-review-instructor-names.js` then upgraded the legacy
+last-name-only instructor values ("Hafer") to the course's own spelling ("Kathy Hafer") wherever
+exactly one listed instructor shared the last name, and `sync-rmp-reviews.js --max-insert 20000`
+did the first, large import by hand before the branch merged, so the schedule only ever imports
+the monthly increment. The design and rollout record is `docs/archive/rmp-reviews-import-design.md`.
 
 ## Scripts — one-time imports, not part of the app
 
@@ -115,6 +138,7 @@ the repo root before running any of these or they throw on `XLSX.readFile`:
 | `fix-reviews.js` | yes | Repairs rows from an earlier import |
 | `seed-reviews-api.js` | yes | Writes reviews through the API rather than direct SQL |
 | `dedupe-departments.js` | no | Removes duplicate values inside `courses.departments` |
+| `fix-review-instructor-names.js` | no | Upgraded legacy last-name-only review instructors to full names (run once, 2026-09-02); dry-run by default |
 | `update-descriptions.js` | no | Refreshed course descriptions — **superseded by `sync-courses.js`**, do not run |
 
 `scripts/seed-reviews.sql` is generated output (~2 MB) and is gitignored.

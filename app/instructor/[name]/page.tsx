@@ -31,10 +31,9 @@ export default async function InstructorPage({
   const requestedName = decodeURIComponent(name);
   const supabase = await createClient();
 
-  // One professor, one page. Course pages link instructors by the surname their
-  // reviews carry ("Jager"), while courses.instructors knows the full name
-  // ("Abigail Jager") — so the same person had two pages, and only the
-  // full-name one could match RateMyProfessors. Send the surname to the full
+  // One professor, one page. A few legacy reviews still carry a bare surname
+  // ("Jager") where courses.instructors knows the full name ("Abigail Jager"),
+  // which would give the same person two pages. Send the surname to the full
   // name whenever the surname identifies exactly one instructor. Ambiguous
   // surnames ("Johnson") keep their own page, since folding them would put one
   // professor's reviews under another's name.

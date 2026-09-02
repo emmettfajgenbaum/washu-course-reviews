@@ -236,15 +236,15 @@ function toScore(primary, ...fallbacks) {
 
 async function main() {
   const supabase = createSupabase();
-  const has006 = await hasMigration008(supabase);
-  if (!has006 && APPLY) {
+  const has008 = await hasMigration008(supabase);
+  if (!has008 && APPLY) {
     console.error(MIGRATION_008_MESSAGE);
     process.exit(1);
   }
 
   console.log(`Project: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
   console.log(APPLY ? "MODE: APPLY (will write changes)\n" : "MODE: DRY RUN (no writes)\n");
-  if (!has006) {
+  if (!has008) {
     console.warn("WARNING: migration 008 is not applied. Previewing without stored rating ids; --apply will refuse until it is.\n");
   }
 
@@ -269,7 +269,7 @@ async function main() {
   const reviews = await fetchAll(
     supabase,
     "reviews",
-    has006
+    has008
       ? "id, course_id, instructor, comment, created_at, rmp_rating_id"
       : "id, course_id, instructor, comment, created_at"
   );

@@ -53,9 +53,8 @@ export default function CourseDetail({
   // course.instructors holds full names ("Abigail Jager"); reviews hold the
   // surname ("Jager"). Listing both put the same professor on the page twice,
   // linking to two different pages. Fold them together, preferring the full
-  // name — which is also the only form that can match RateMyProfessors. A
-  // surname shared by several instructors stays on its own, since we cannot
-  // tell which of them a review belongs to.
+  // name. A surname shared by several instructors stays on its own, since we
+  // cannot tell which of them a review belongs to.
   const allInstructors = useMemo(() => {
     const names = [
       ...course.instructors,
